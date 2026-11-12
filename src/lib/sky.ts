@@ -157,6 +157,13 @@ export function compass(az: number): string {
   return COMPASS[Math.round((((az % 360) + 360) % 360) / 45) % 8]
 }
 
+const COMPASS_SHORT = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+
+/** Short compass point for an azimuth, e.g. "SE". */
+export function compassShort(az: number): string {
+  return COMPASS_SHORT[Math.round((((az % 360) + 360) % 360) / 45) % 8]
+}
+
 export function formatTime(d: Date, timeZone?: string): string {
   return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }).format(d)
 }

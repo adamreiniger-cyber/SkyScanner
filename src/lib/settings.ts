@@ -16,13 +16,15 @@ export type SkyChoice = {
   date: string | null
   /** Hide targets the Moon washes out. */
   hideMoonWashed: boolean
+  /** Plan for one hour of the night (local hour, 0 to 23), or null for the whole night. */
+  hour: number | null
 }
 
 export const KEYS = { place: 'place', equipment: 'equipment', sky: 'sky', target: 'target' } as const
 
 /** Until the user sets a location, start in London. */
 export const DEFAULT_PLACE: SavedPlace = { lat: 51.5074, lon: -0.1278, name: 'London', source: 'default' }
-export const DEFAULT_SKY: SkyChoice = { bortle: 5, filter: 'none', date: null, hideMoonWashed: false }
+export const DEFAULT_SKY: SkyChoice = { bortle: 5, filter: 'none', date: null, hideMoonWashed: false, hour: null }
 export { DEFAULT_EQUIPMENT_ID }
 
 export const FILTER_LABEL: Record<FilterId, string> = {
@@ -67,4 +69,23 @@ export function planningTime(date: string | null, now: Date): Date {
 export function toDateInput(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+/** Hours offered for one-hour planning, in night order: 17:00 through 06:00. */
+export const NIGHT_HOURS = [17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6]
+
+/**
+ * The chosen hour as a time range within the night that starts at `nightStart`
+ * (local noon). Hours before noon fall on the next calendar day.
+ */
+export function hourRange(nightStart: Date, hour: number | null): { from: Date; to: Date } | undefined {
+  if (hour == null || !Number.isInteger(hour) || hour < 0 || hour > 23) return undefined
+  const from = new Date(nightStart)
+  if (hour < 12) from.setDate(from.getDate() + 1)
+  from.setHours(hour, 0, 0, 0)
+  return { from, to: new Date(from.getTime() + 3_600_000) }
+}
+
+export function hourLabel(hour: number): string {
+  return `${String(hour).padStart(2, '0')}:00`
 }

@@ -6,7 +6,9 @@ import {
   DEFAULT_SKY,
   FILTER_HINT,
   FILTER_LABEL,
+  hourLabel,
   KEYS,
+  NIGHT_HOURS,
   planningTime,
   toDateInput,
   withSkyDefaults,
@@ -28,7 +30,7 @@ export function SkyScreen({ now: nowProp }: Props) {
   const [now] = useState(() => nowProp ?? new Date())
   const sky = withSkyDefaults(saved)
   const update = (patch: Partial<SkyChoice>) => setSaved({ ...sky, ...patch })
-  const ids = { date: useId(), moon: useId() }
+  const ids = { date: useId(), moon: useId(), hour: useId() }
 
   const startMs = nightStart(planningTime(sky.date, now)).getTime()
   const start = new Date(startMs)
@@ -69,6 +71,23 @@ export function SkyScreen({ now: nowProp }: Props) {
           <button type="button" className="button" onClick={() => update({ date: null })} disabled={sky.date === null}>
             Tonight
           </button>
+        </div>
+        <div className="field">
+          <label htmlFor={ids.hour}>Time</label>
+          <select
+            id={ids.hour}
+            className="input"
+            value={sky.hour ?? ''}
+            onChange={(e) => update({ hour: e.target.value === '' ? null : Number(e.target.value) })}
+          >
+            <option value="">Whole night</option>
+            {NIGHT_HOURS.map((h) => (
+              <option key={h} value={h}>
+                {hourLabel(h)} – {hourLabel((h + 1) % 24)}
+              </option>
+            ))}
+          </select>
+          <p className="muted small">Pick one hour to rank targets for just that hour.</p>
         </div>
         <dl className="facts">
           <div>
