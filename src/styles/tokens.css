@@ -9,15 +9,25 @@
   --surface: #11173a;
   --line: rgb(150 170 255 / 0.18);
   --text: #e8ecff;
-  --muted: #98a2cc;
+  --muted: #a3acd4;
   --accent: #8fb0ff;
   --on-accent: #070a18;
   --great: #6be3a4;
   --good: #ffd36b;
   --fair: #ff9a7a;
+  --surface-2: #0c1130;
+  --line-strong: rgb(150 170 255 / 0.32);
+  --window: rgb(143 176 255 / 0.16);
+  --twilight: rgb(150 170 255 / 0.07);
+  --grid: rgb(150 170 255 / 0.14);
 
-  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: var(--font-body);
+  --font-body: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', var(--font-body);
+
+  --text-sm: 0.8125rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2.125rem;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -28,18 +38,24 @@
 
   --radius: 14px;
   --tap: 44px;
-  --content-max: 1200px;
+  --content-max: 1320px;
 }
 
 :root[data-theme='night'] {
   --bg: #0a0000;
   --surface: #1a0303;
   --line: rgb(255 60 60 / 0.22);
-  --text: #ff6a5c;
-  --muted: #b8443a;
+  --text: #ff7a6b;
+  /* #b8443a failed WCAG AA on the night background (about 3.4:1); this is about 5:1. */
+  --muted: #d9564a;
   --accent: #ff3b30;
   --on-accent: #0a0000;
-  --great: #ff6a5c;
+  --great: #ff7a6b;
   --good: #e0483d;
-  --fair: #a8322a;
+  --fair: #d04b40;
+  --surface-2: #120101;
+  --line-strong: rgb(255 60 60 / 0.4);
+  --window: rgb(255 59 48 / 0.16);
+  --twilight: rgb(255 60 60 / 0.06);
+  --grid: rgb(255 60 60 / 0.16);
 }

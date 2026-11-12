@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { NightModeToggle } from './components/NightModeToggle'
 import { usePersistentState } from './lib/usePersistentState'
 import { SCREENS, type ScreenId } from './screens/screens'
+import { TargetsScreen } from './screens/targets/TargetsScreen'
 
 export default function App() {
   const [screen, setScreen] = usePersistentState<ScreenId>('screen', 'targets')
@@ -21,11 +22,17 @@ export default function App() {
         <NightModeToggle on={night} onChange={setNight} />
       </header>
 
-      <main className="screen" aria-labelledby="screen-title">
-        <h2 id="screen-title">{current.label}</h2>
-        <p className="muted">{current.blurb}</p>
-        <p className="muted small">The redesign is in progress. This screen is a placeholder.</p>
-      </main>
+      {current.id === 'targets' ? (
+        <main className="screen" aria-label="Targets">
+          <TargetsScreen onNavigate={setScreen} />
+        </main>
+      ) : (
+        <main className="screen" aria-labelledby="screen-title">
+          <h2 id="screen-title">{current.label}</h2>
+          <p className="muted">{current.blurb}</p>
+          <p className="muted small">The redesign is in progress. This screen is a placeholder.</p>
+        </main>
+      )}
 
       <nav className="tabbar" aria-label="Main">
         {SCREENS.map((s) => (
