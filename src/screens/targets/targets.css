@@ -679,3 +679,94 @@
 :root[data-theme='night'] .framing-box__credit {
   display: none;
 }
+
+/* Copy buttons: on the list heading and beside the target's name. */
+.target-list__head,
+.details__name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.target-list__head h2 {
+  margin-bottom: 0;
+}
+
+.target-list__head {
+  margin-bottom: var(--space-3);
+}
+
+.copy-button {
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.copy-button:hover {
+  border-color: var(--accent);
+}
+
+.copy-button svg rect,
+.copy-button svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Framing / Sample photo switch above the preview. */
+.segmented {
+  display: inline-flex;
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--surface-2);
+}
+
+.segmented button {
+  min-height: calc(var(--tap) - 4px);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Photos are hidden in night mode, so the switch goes too. */
+:root[data-theme='night'] .segmented {
+  display: none;
+}
+
+.framing-box[data-view='framing'] .framing-box__photo,
+.framing-box[data-view='photo'] .framing-box__framing {
+  display: none;
+}
+
+/* Night mode hides photos, so always show the framing preview. */
+:root[data-theme='night'] .framing-box[data-view='photo'] .framing-box__framing {
+  display: block;
+}
+
+/* The sample photo gets more room than the small standalone photo. */
+.framing-box__photo .framing-photo {
+  max-height: 360px;
+}

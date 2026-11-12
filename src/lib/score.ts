@@ -18,6 +18,8 @@ export type SkySettings = {
   narrowbandFilter: boolean
   /** The equipment in use. Without it, a 50 mm smart telescope is assumed. */
   kit?: { apertureMm: number; imaging: boolean }
+  /** Only look for the best window within this time range (one chosen hour). Night targets only. */
+  only?: { from: Date; to: Date }
 }
 
 /** Cloud cover in percent for a time, or null if there's no forecast for it. */
@@ -251,15 +253,26 @@ export function assess(
     return altitudeFactor(s.alt) * darknessFactor(s.sunAlt, kind) * moonF(s) * c
   })
 
+  // With one hour chosen, the window must fall inside it. Usable hours still
+  // count the whole night, so the Time factor means the same either way.
+  const only = daytime ? undefined : sky.only
+  const pick = only
+    ? quality.map((q, i) => {
+        const t = samples[i].time.getTime()
+        return t >= only.from.getTime() && t <= only.to.getTime() ? q : 0
+      })
+    : quality
+
   let best = 0
-  quality.forEach((q, i) => {
-    if (q > quality[best]) best = i
+  pick.forEach((q, i) => {
+    if (q > pick[best]) best = i
   })
 
   const skyF = skyFactor(sky, target)
   const imaging = sky.kit?.imaging ?? true
-  const usableHours = (quality.filter((q) => q > 0 && q >= quality[best] * 0.5).length * STEP_MINUTES) / 60
-  if (quality[best] <= 0) {
+  const nightBest = Math.max(...quality)
+  const usableHours = (quality.filter((q) => q > 0 && q >= nightBest * 0.5).length * STEP_MINUTES) / 60
+  if (pick[best] <= 0) {
     return {
       samples,
       dark,
@@ -288,11 +301,11 @@ export function assess(
     }
   }
 
-  const floor = quality[best] * 0.85
+  const floor = pick[best] * 0.85
   let from = best
   let to = best
-  while (from > 0 && quality[from - 1] >= floor) from--
-  while (to < quality.length - 1 && quality[to + 1] >= floor) to++
+  while (from > 0 && pick[from - 1] >= floor) from--
+  while (to < pick.length - 1 && pick[to + 1] >= floor) to++
 
   const inWindow = samples.slice(from, to + 1)
   const mean = (f: (s: TargetSample) => number) => inWindow.reduce((sum, s) => sum + f(s), 0) / inWindow.length
