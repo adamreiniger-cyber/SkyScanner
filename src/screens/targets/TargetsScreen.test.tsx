@@ -87,7 +87,7 @@ describe('Targets screen', () => {
     expect(screen.getByText('From Wikipedia')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Photo of Orion Nebula' })).toHaveAttribute(
       'src',
-      'https://upload.wikimedia.org/a/b/800px-M42.jpg',
+      'https://upload.wikimedia.org/a/b/960px-M42.jpg',
     )
   })
 

@@ -668,3 +668,21 @@
 :root[data-theme='night'] .details__photo {
   display: none;
 }
+
+/* With a photo in the framing preview, the outline only shows if the photo is hidden. */
+.framing__target--behind {
+  display: none;
+}
+/* Night mode: no bright colour photo; fall back to the outline. */
+:root[data-theme='night'] .framing__photo {
+  display: none;
+}
+:root[data-theme='night'] .framing__target--behind {
+  display: inline;
+}
+.framing__photo--outside {
+  opacity: 0.25;
+}
+.framing__sky {
+  fill: var(--bg);
+}
