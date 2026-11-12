@@ -7,7 +7,13 @@ export function summaryUrl(title: string): string {
   return `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replaceAll(' ', '_'))}`
 }
 
-export type WikiImage = { src: string; width: number; height: number }
+export type WikiImage = {
+  src: string
+  width: number
+  height: number
+  /** A smaller copy to try if `src` fails to load (Wikimedia only renders some sizes). */
+  fallback?: string
+}
 export type WikiSummary = { text: string | null; image: WikiImage | null }
 
 type RawImage = { source?: unknown; width?: unknown; height?: unknown }
@@ -20,14 +26,20 @@ function readImage(raw: RawImage | undefined): WikiImage | null {
 
 /**
  * A photo about `want` pixels wide. The summary's thumbnail is small (about
- * 320 px), so ask Wikimedia for a bigger rendering of it, but never bigger
- * than the original.
+ * 330 px), so ask Wikimedia for a bigger rendering of it, at one of its
+ * standard widths (960), but never bigger than the original. The thumbnail
+ * stays as a fallback.
  */
-export function pickImage(thumb: WikiImage | null, original: WikiImage | null, want = 800): WikiImage | null {
-  if (original && original.width <= want) return original
+export function pickImage(thumb: WikiImage | null, original: WikiImage | null, want = 960): WikiImage | null {
+  if (original && original.width <= want) return { ...original, fallback: thumb?.src }
   if (thumb && original && /\/\d+px-[^/]+$/.test(thumb.src)) {
     const scale = want / original.width
-    return { src: thumb.src.replace(/\/\d+px-([^/]+)$/, `/${want}px-$1`), width: want, height: Math.round(original.height * scale) }
+    return {
+      src: thumb.src.replace(/\/\d+px-([^/]+)$/, `/${want}px-$1`),
+      width: want,
+      height: Math.round(original.height * scale),
+      fallback: thumb.src,
+    }
   }
   return thumb ?? original
 }

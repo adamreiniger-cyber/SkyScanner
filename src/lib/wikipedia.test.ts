@@ -5,19 +5,19 @@ const thumb = { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/
 const original = { src: 'https://upload.wikimedia.org/wikipedia/commons/f/f3/M42.jpg', width: 3000, height: 3000 }
 
 describe('Wikipedia summary', () => {
-  it('reads the text and a photo about 800 px wide', () => {
+  it('reads the text and a photo 960 px wide, keeping the thumbnail as a fallback', () => {
     const s = parseSummary({
       extract: ' The Orion Nebula. ',
       thumbnail: { source: thumb.src, width: 320, height: 320 },
       originalimage: { source: original.src, width: 3000, height: 3000 },
     })
     expect(s!.text).toBe('The Orion Nebula.')
-    expect(s!.image).toEqual({ src: thumb.src.replace('320px-', '800px-'), width: 800, height: 800 })
+    expect(s!.image).toEqual({ src: thumb.src.replace('320px-', '960px-'), width: 960, height: 960, fallback: thumb.src })
   })
 
   it('uses a small original as it is', () => {
     const small = { ...original, width: 600, height: 400 }
-    expect(pickImage(thumb, small)).toEqual(small)
+    expect(pickImage(thumb, small)).toEqual({ ...small, fallback: thumb.src })
   })
 
   it('copes with no photo, or nothing at all', () => {

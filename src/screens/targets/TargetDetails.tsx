@@ -159,7 +159,7 @@ export function TargetDetails(props: Props) {
             </div>
             {advice.framing && (
               <figure className="framing-box">
-                <FramingPreview target={target} kit={kit} />
+                <FramingPreview target={target} kit={kit} image={summary?.image} />
                 <figcaption>{advice.framing.text}</figcaption>
               </figure>
             )}
@@ -259,20 +259,21 @@ function ExternalIcon() {
  * bright colour photo would spoil dark adaptation.
  */
 function TargetPhoto({ name, wiki, image }: { name: string; wiki: string; image: WikiImage | null | undefined }) {
-  const [failed, setFailed] = useState(false)
-  if (image === null || failed) return null
+  const [tries, setTries] = useState(0)
+  const src = image ? (tries === 0 ? image.src : tries === 1 ? image.fallback : undefined) : undefined
+  if (image === null || (image && !src)) return null
   return (
     <figure className="details__photo">
       <div className="details__photo-frame">
         {image && (
           <img
-            src={image.src}
+            src={src}
             width={image.width}
             height={image.height}
             alt={`Photo of ${name}`}
             loading="lazy"
             decoding="async"
-            onError={() => setFailed(true)}
+            onError={() => setTries((n) => n + 1)}
           />
         )}
       </div>
