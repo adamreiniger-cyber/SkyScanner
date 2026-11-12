@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AltitudeChart } from '../../components/AltitudeChart'
 import { FramingPreview } from '../../components/FramingPreview'
 import { advise } from '../../lib/advice'
@@ -8,7 +9,7 @@ import type { Assessment, CloudLookup } from '../../lib/score'
 import type { WeatherLookup } from '../../lib/weather'
 import { compass, crossings, formatTime, type NightBase } from '../../lib/sky'
 import { useRemote } from '../../lib/useRemote'
-import { astrobinUrl, fetchSummary, stellariumUrl, wikiUrl } from '../../lib/wikipedia'
+import { astrobinUrl, fetchSummary, stellariumUrl, wikiUrl, type WikiImage } from '../../lib/wikipedia'
 import { SolarImage, SolarSafety, SPACE_WEATHER_URL } from './SolarSafety'
 
 type Neighbour = { id: string; name: string } | null
@@ -101,6 +102,8 @@ export function TargetDetails(props: Props) {
 
       {isSun && <SolarSafety />}
 
+      <TargetPhoto name={target.name} wiki={target.wiki} image={summary === undefined ? undefined : (summary?.image ?? null)} />
+
       <div className="details__grid">
         <div className="details__col">
           <section className="card" aria-labelledby="h-tonight">
@@ -190,8 +193,8 @@ export function TargetDetails(props: Props) {
           <section className="card" aria-labelledby="h-about">
             <h3 id="h-about">About</h3>
             {isSun && <SolarImage />}
-            <p>{summary ?? target.description}</p>
-            {summary && <p className="muted small">From Wikipedia</p>}
+            <p>{summary?.text ?? target.description}</p>
+            {summary?.text && <p className="muted small">From Wikipedia</p>}
             <nav aria-label="Look it up" className="links">
               <a href={wikiUrl(target.wiki)} target="_blank" rel="noreferrer">
                 Wikipedia
@@ -247,5 +250,37 @@ function ExternalIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
     </svg>
+  )
+}
+
+/**
+ * The target's lead photo from Wikipedia. Space is held while it loads, and it
+ * disappears if there's no photo or it fails. Hidden in red night mode, where a
+ * bright colour photo would spoil dark adaptation.
+ */
+function TargetPhoto({ name, wiki, image }: { name: string; wiki: string; image: WikiImage | null | undefined }) {
+  const [failed, setFailed] = useState(false)
+  if (image === null || failed) return null
+  return (
+    <figure className="details__photo">
+      <div className="details__photo-frame">
+        {image && (
+          <img
+            src={image.src}
+            width={image.width}
+            height={image.height}
+            alt={`Photo of ${name}`}
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed(true)}
+          />
+        )}
+      </div>
+      {image && (
+        <figcaption className="muted small">
+          Photo from <a href={wikiUrl(wiki)} target="_blank" rel="noreferrer">Wikipedia</a>, where you’ll find its credit and licence.
+        </figcaption>
+      )}
+    </figure>
   )
 }
