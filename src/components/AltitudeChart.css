@@ -1,0 +1,90 @@
+.alt-chart {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.alt-chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.alt-chart__twilight {
+  fill: var(--twilight);
+}
+
+.alt-chart__window {
+  fill: var(--window);
+}
+
+.alt-chart__grid {
+  stroke: var(--grid);
+  stroke-dasharray: 3 4;
+}
+
+.alt-chart__horizon {
+  stroke: var(--line-strong);
+}
+
+.alt-chart__moon {
+  stroke: var(--muted);
+  stroke-dasharray: 2 3;
+}
+
+.alt-chart__curve {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.alt-chart__peak {
+  fill: var(--accent);
+}
+
+.alt-chart__cloud {
+  fill: var(--muted);
+}
+
+.alt-chart__label {
+  fill: var(--muted);
+  font-size: 12px;
+}
+
+.alt-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.alt-chart__legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.alt-chart__key {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+
+.alt-chart__key--window {
+  background: var(--window);
+  border-color: var(--accent);
+}
+
+.alt-chart__key--twilight {
+  background: var(--twilight);
+}
+
+.alt-chart__key--cloud {
+  background: var(--muted);
+}

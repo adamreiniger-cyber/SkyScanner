@@ -69,6 +69,7 @@ Deploys are automated with GitHub Actions. Nobody uploads by hand any more.
 
 - `.github/workflows/ci.yml` runs lint, tests and a build on every pull request and every push to `main`.
 - `.github/workflows/deploy.yml` builds and uploads `dist/` over FTP on every push to `main`. It can also be started by hand from the Actions tab. It uses `SamKirkland/FTP-Deploy-Action`, which uploads only changed files and never wipes the server folder.
+- **Backup:** before uploading, the deploy job downloads the live page and the files it loads and saves them as a `live-site-backup-N` artifact on the run (kept 90 days). If the backup fails, nothing is uploaded.
 - **Safety switch:** the deploy job does nothing until the repository variable `FTP_DEPLOY_ENABLED` is `true`. Leave it off until the rebuild is good enough to replace the live v9 site.
 - Secrets: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`. Variables: `FTP_DEPLOY_ENABLED`, `FTP_REMOTE_DIR` (with a trailing slash), and optionally `FTP_PROTOCOL` (`ftps` by default, `ftp` if the host has no TLS). They live **only** in GitHub settings. Never commit credentials or put them in code, docs or chat.
 - Work happens on branches and goes to `main` through a pull request, so merging is the "deploy" button.

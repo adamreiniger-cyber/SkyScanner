@@ -1,0 +1,82 @@
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { TargetsScreen } from './TargetsScreen'
+
+const NOW = new Date(2026, 10, 12, 21, 0) // 12 Nov 2026, 21:00 London
+
+describe('Targets screen', () => {
+  beforeEach(() => {
+    // No network: every call fails, and the screen must still work.
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline'))))
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    localStorage.clear()
+  })
+
+  it('lists tonight’s targets best first, even offline', async () => {
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    const scores = screen
+      .getAllByRole('button')
+      .filter((b) => b.classList.contains('target-row'))
+      .map((b) => Number(b.querySelector('.target-row__score')!.textContent))
+    expect(scores.length).toBeGreaterThan(10)
+    expect([...scores].sort((a, b) => b - a)).toEqual(scores)
+    expect(await screen.findByText('No cloud forecast')).toBeInTheDocument()
+  })
+
+  it('opens a target’s details and goes back', () => {
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: /Orion Nebula/ }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Orion Nebula' })).toBeInTheDocument()
+    expect(screen.getByText(/M42 · Emission nebula · Orion/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Why it scores \d+/ })).toBeInTheDocument()
+    expect(screen.getByText(/Bigger than the frame/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Stellarium Web/ })).toHaveAttribute(
+      'href',
+      'https://stellarium-web.org/skysource/M42',
+    )
+    // Offline, the catalogue description stands in for Wikipedia.
+    expect(screen.getByText(/closest large star-forming region/)).toBeInTheDocument()
+    expect(screen.getByText('No forecast available. Check the sky before you set up.')).toBeInTheDocument()
+
+    // The back button is only shown below 1024px; jsdom's window is 1024px wide.
+    fireEvent.click(screen.getByRole('button', { name: /All targets/, hidden: true }))
+    expect(document.querySelector('.targets')).toHaveAttribute('data-view', 'list')
+  })
+
+  it('steps to the next target', () => {
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: /Orion Nebula/ }))
+    const stepper = screen.getByRole('navigation', { name: 'Other targets' })
+    const next = within(stepper).getAllByRole('button')[1]
+    const nextName = next.textContent!
+    fireEvent.click(next)
+    expect(screen.getByRole('heading', { level: 2, name: nextName })).toBeInTheDocument()
+  })
+
+  it('sends the settings chips to their screens', () => {
+    const onNavigate = vi.fn()
+    render(<TargetsScreen onNavigate={onNavigate} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: 'London' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Seestar S50' }))
+    expect(onNavigate.mock.calls).toEqual([['location'], ['equipment']])
+  })
+
+  it('uses the Wikipedia summary when it loads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve(
+          new Response(JSON.stringify(url.includes('wikipedia') ? { extract: 'A summary from Wikipedia.' } : {}), {
+            status: 200,
+          }),
+        ),
+      ),
+    )
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: /Orion Nebula/ }))
+    expect(await screen.findByText('A summary from Wikipedia.')).toBeInTheDocument()
+    expect(screen.getByText('From Wikipedia')).toBeInTheDocument()
+  })
+})
