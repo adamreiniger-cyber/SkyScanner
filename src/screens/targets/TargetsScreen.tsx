@@ -16,6 +16,7 @@ import {
 } from '../../lib/settings'
 import { compassShort, computeNight, formatTime, nightStart, type Place } from '../../lib/sky'
 import { copyText, listText } from '../../lib/share'
+import { DEFAULT_HORIZON, describeHorizon, isOpen, withHorizonDefaults, type Horizon } from '../../lib/horizon'
 import { CopyButton } from '../../components/CopyButton'
 import { usePersistentState } from '../../lib/usePersistentState'
 import { useRemote } from '../../lib/useRemote'
@@ -30,6 +31,9 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
   const [kitId] = usePersistentState(KEYS.equipment, DEFAULT_EQUIPMENT_ID)
   const [savedSky] = usePersistentState<SkyChoice>(KEYS.sky, DEFAULT_SKY)
   const sky = useMemo(() => withSkyDefaults(savedSky), [savedSky])
+  const [savedHorizon] = usePersistentState<Horizon>(KEYS.horizon, DEFAULT_HORIZON)
+  const horizon = useMemo(() => withHorizonDefaults(savedHorizon), [savedHorizon])
+  const horizonOn = !isOpen(horizon)
   const [selectedId, setSelectedId] = usePersistentState<string | null>(KEYS.target, null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [now] = useState(() => nowProp ?? new Date())
@@ -44,7 +48,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
   const weatherAt = useMemo(() => weatherLookup(forecast ?? null), [forecast])
   const cloudAt = useMemo(() => cloudLookup(weatherAt), [weatherAt])
 
-  const ranked = useMemo(
+  const assessed = useMemo(
     () =>
       CATALOGUE.map((target) => {
         const filterOn = sky.filter !== 'none' || Boolean(kit.dualBandFilter)
@@ -56,12 +60,19 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
             narrowbandFilter: filterOn,
             kit: { apertureMm: kit.apertureMm, imaging: kit.kind === 'smart-telescope' },
             only,
+            horizon: horizonOn ? horizon : undefined,
           },
           cloudAt,
           weatherAt,
         )
         return { target, a, filterOn: filterOn && NARROWBAND_KINDS.has(target.kind) }
-      })
+      }),
+    [night, sky, kit, cloudAt, weatherAt, only, horizon, horizonOn],
+  )
+  const hiddenCount = assessed.filter(({ a }) => a.hiddenByHorizon).length
+  const ranked = useMemo(
+    () =>
+      assessed
         // The Moon and Sun aren't washed out by moonlight, so the moon filter leaves them alone.
         .filter(
           ({ target, a }) =>
@@ -70,9 +81,11 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
             target.kind === 'sun' ||
             (a.factors.find((f) => f.id === 'moon')?.value ?? 1) >= 0.5,
         )
+        // Targets that stay behind the user's horizon are left out (counted below).
+        .filter(({ a }) => !a.hiddenByHorizon)
         // Night targets first, best first; the Sun goes at the end as a daytime extra.
         .sort((x, y) => Number(x.a.daytime) - Number(y.a.daytime) || y.a.score - x.a.score),
-    [night, sky, kit, cloudAt, weatherAt, only],
+    [assessed, sky.hideMoonWashed],
   )
 
   const index = Math.max(0, ranked.findIndex((r) => r.target.id === selectedId))
@@ -120,6 +133,11 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         <button type="button" className="chip" onClick={() => onNavigate('equipment')}>
           {kit.name}
         </button>
+        {horizonOn && (
+          <button type="button" className="chip" onClick={() => onNavigate('horizon')}>
+            {describeHorizon(horizon)}
+          </button>
+        )}
       </div>
 
       <section className={`outlook outlook--${forecast === undefined ? 'loading' : outlook.level}`} aria-live="polite">
@@ -176,6 +194,15 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
               </li>
             ))}
           </ol>
+          {hiddenCount > 0 && (
+            <p className="muted small target-list__hidden">
+              {hiddenCount} {hiddenCount === 1 ? 'target stays' : 'targets stay'} behind your horizon and{' '}
+              {hiddenCount === 1 ? 'is' : 'are'} hidden.{' '}
+              <button type="button" className="link-button" onClick={() => onNavigate('horizon')}>
+                Change horizon
+              </button>
+            </p>
+          )}
         </section>
 
         <div className="targets__detail">

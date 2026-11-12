@@ -20,7 +20,7 @@ export type SkyChoice = {
   hour: number | null
 }
 
-export const KEYS = { place: 'place', equipment: 'equipment', sky: 'sky', target: 'target' } as const
+export const KEYS = { place: 'place', equipment: 'equipment', sky: 'sky', target: 'target', horizon: 'horizon' } as const
 
 /** Until the user sets a location, start in London. */
 export const DEFAULT_PLACE: SavedPlace = { lat: 51.5074, lon: -0.1278, name: 'London', source: 'default' }

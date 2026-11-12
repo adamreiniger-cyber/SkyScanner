@@ -291,3 +291,37 @@ describe('compass', () => {
     expect([0, 44, 90, 135, 180, 225, 270, 315, 359].map(compassShort)).toEqual(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'])
   })
 })
+
+describe('your horizon', () => {
+  const allOpen = { open: Array(8).fill(true), minAlt: 0 }
+  const garden = { open: [false, false, true, true, true, true, false, false], minAlt: 0 } // E to SW
+
+  it('changes nothing when every direction is open', () => {
+    expect(assess(night, m42, { ...suburban, horizon: allOpen })).toEqual({ ...assess(night, m42, suburban) })
+  })
+
+  it('keeps the window inside the open directions', () => {
+    const a = assess(night, m42, { ...suburban, horizon: garden })
+    expect(a.window).not.toBeNull()
+    for (let i = a.window![0]; i <= a.window![1]; i++) {
+      const az = a.samples[i].az
+      expect(az).toBeGreaterThanOrEqual(67.5)
+      expect(az).toBeLessThan(247.5)
+    }
+  })
+
+  it('flags a target that is only up behind the horizon', () => {
+    const north = { open: [false, false, false, false, true, false, false, false], minAlt: 0 }
+    const m81 = findTarget('m81')!
+    const a = assess(night, m81, { ...suburban, horizon: north })
+    expect(a.window).toBeNull()
+    expect(a.score).toBe(0)
+    expect(a.hiddenByHorizon).toBe(true)
+    expect(assess(night, m81, suburban).hiddenByHorizon).toBe(false)
+  })
+
+  it('treats trees as a raised horizon', () => {
+    const a = assess(night, m42, { ...suburban, horizon: { ...allOpen, minAlt: 30 } })
+    for (let i = a.window![0]; i <= a.window![1]; i++) expect(a.samples[i].alt).toBeGreaterThanOrEqual(30)
+  })
+})

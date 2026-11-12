@@ -6,6 +6,7 @@ import { SCREENS, type ScreenId } from './screens/screens'
 import { EquipmentScreen } from './screens/equipment/EquipmentScreen'
 import { LocationScreen } from './screens/location/LocationScreen'
 import { SkyScreen } from './screens/sky/SkyScreen'
+import { HorizonScreen } from './screens/horizon/HorizonScreen'
 import { TargetsScreen } from './screens/targets/TargetsScreen'
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
         {current.id === 'targets' && <TargetsScreen onNavigate={setScreen} />}
         {current.id === 'location' && <LocationScreen />}
         {current.id === 'sky' && <SkyScreen />}
+        {current.id === 'horizon' && <HorizonScreen />}
         {current.id === 'equipment' && <EquipmentScreen onDone={() => setScreen('targets')} />}
       </main>
 

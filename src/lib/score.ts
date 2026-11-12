@@ -10,6 +10,7 @@
 import { isDaytime, NARROWBAND_KINDS, type Target, type TargetKind } from './catalogue'
 import { darkRange, type NightBase, STEP_MINUTES, type TargetSample, trackTarget } from './sky'
 import type { Hour, WeatherLookup } from './weather'
+import { canSee, type Horizon } from './horizon'
 
 export type SkySettings = {
   /** Bortle class, 1 (darkest) to 9 (inner city). */
@@ -20,6 +21,8 @@ export type SkySettings = {
   kit?: { apertureMm: number; imaging: boolean }
   /** Only look for the best window within this time range (one chosen hour). Night targets only. */
   only?: { from: Date; to: Date }
+  /** Directions and heights the user can see. Behind it, a target counts as not up. */
+  horizon?: Horizon
 }
 
 /** Cloud cover in percent for a time, or null if there's no forecast for it. */
@@ -52,6 +55,8 @@ export type Assessment = {
   usableHours: number
   /** True for the Sun: the window is in daylight, not darkness. */
   daytime: boolean
+  /** True when the target would be worth it, but stays behind the user's horizon. */
+  hiddenByHorizon: boolean
 }
 
 const WEIGHTS: Record<FactorId, number> = {
@@ -246,12 +251,15 @@ export function assess(
     kind === 'moon' ? phaseFactor(night.moonIllum) : moonFactor(s.moonAlt, s.moonSep, night.moonIllum, kind)
 
   const imagingKit = sky.kit?.imaging ?? true
-  const quality = samples.map((s, i) => {
+  const open = samples.map((s) => quality0Visible(sky.horizon, s))
+  const raw = samples.map((s, i) => {
     const c = (cloudFactor(cloudAt(s.time)) ?? 1) * (conditionsFactor(weatherAt(s.time), kind, imagingKit) ?? 1)
     if (daytime) return sunAltitudeFactor(s.alt) * c
     if (!dark || i < dark[0] || i > dark[1]) return 0
     return altitudeFactor(s.alt) * darknessFactor(s.sunAlt, kind) * moonF(s) * c
   })
+  const quality = raw.map((q, i) => (open[i] ? q : 0))
+  const hiddenByHorizon = quality.every((q) => q <= 0) && raw.some((q) => q > 0)
 
   // With one hour chosen, the window must fall inside it. Usable hours still
   // count the whole night, so the Time factor means the same either way.
@@ -298,6 +306,7 @@ export function assess(
       cloudInWindow: null,
       usableHours: 0,
       daytime,
+      hiddenByHorizon,
     }
   }
 
@@ -348,7 +357,12 @@ export function assess(
     cloudInWindow,
     usableHours,
     daytime,
+    hiddenByHorizon,
   }
+}
+
+function quality0Visible(horizon: Horizon | undefined, s: TargetSample): boolean {
+  return !horizon || canSee(horizon, s.az, s.alt)
 }
 
 /**
