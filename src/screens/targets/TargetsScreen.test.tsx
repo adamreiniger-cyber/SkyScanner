@@ -67,7 +67,15 @@ describe('Targets screen', () => {
       'fetch',
       vi.fn((url: string) =>
         Promise.resolve(
-          new Response(JSON.stringify(url.includes('wikipedia') ? { extract: 'A summary from Wikipedia.' } : {}), {
+          new Response(JSON.stringify(
+              url.includes('wikipedia')
+                ? {
+                    extract: 'A summary from Wikipedia.',
+                    thumbnail: { source: 'https://upload.wikimedia.org/a/b/320px-M42.jpg', width: 320, height: 240 },
+                    originalimage: { source: 'https://upload.wikimedia.org/a/M42.jpg', width: 4000, height: 3000 },
+                  }
+                : {},
+            ), {
             status: 200,
           }),
         ),
@@ -77,6 +85,10 @@ describe('Targets screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /Orion Nebula/ }))
     expect(await screen.findByText('A summary from Wikipedia.')).toBeInTheDocument()
     expect(screen.getByText('From Wikipedia')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Photo of Orion Nebula' })).toHaveAttribute(
+      'src',
+      'https://upload.wikimedia.org/a/b/800px-M42.jpg',
+    )
   })
 
   it('plans for the chosen night and can hide moon-washed targets', () => {
