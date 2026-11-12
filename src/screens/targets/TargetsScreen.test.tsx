@@ -24,6 +24,29 @@ describe('Targets screen', () => {
     expect(await screen.findByText(/No weather forecast for this night in London/)).toBeInTheDocument()
   })
 
+  it('ranks for one chosen hour and shows which way to look', () => {
+    localStorage.setItem('skyshot:sky', JSON.stringify({ hour: 18 }))
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    expect(screen.getByRole('heading', { name: 'Best at 18:00' })).toBeInTheDocument()
+    // Orion hasn't risen by 18:00 in November.
+    expect(screen.getByRole('button', { name: /Orion Nebula/ })).toHaveTextContent('Not at 18:00')
+    const top = screen.getAllByRole('button').find((b) => b.classList.contains('target-row'))!
+    expect(top).toHaveTextContent(/18:\d\d – 1[89]:\d\d · (N|NE|E|SE|S|SW|W|NW) \d+°/)
+  })
+
+  it('copies the list and a target', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Copy list' }))
+    expect(await screen.findByText('Copied')).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^SkyShot targets for London/))
+    fireEvent.click(screen.getByRole('button', { name: /Orion Nebula/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    await screen.findAllByText('Copied')
+    expect(writeText).toHaveBeenLastCalledWith(expect.stringMatching(/^M42 Orion Nebula · \d+ \w+\nRA 05h/))
+  })
+
   it('opens a target’s details and goes back', () => {
     render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
     fireEvent.click(screen.getByRole('button', { name: /Orion Nebula/ }))

@@ -7,12 +7,16 @@ import {
   DEFAULT_EQUIPMENT_ID,
   DEFAULT_PLACE,
   DEFAULT_SKY,
+  hourLabel,
+  hourRange,
   KEYS,
   planningTime,
   withSkyDefaults,
   type SkyChoice,
 } from '../../lib/settings'
-import { computeNight, formatTime, nightStart, type Place } from '../../lib/sky'
+import { compassShort, computeNight, formatTime, nightStart, type Place } from '../../lib/sky'
+import { copyText, listText } from '../../lib/share'
+import { CopyButton } from '../../components/CopyButton'
 import { usePersistentState } from '../../lib/usePersistentState'
 import { useRemote } from '../../lib/useRemote'
 import type { ScreenId } from '../screens'
@@ -33,6 +37,8 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
   const kit = findEquipment(kitId)
   const startKey = nightStart(planningTime(sky.date, now)).getTime()
   const night = useMemo(() => computeNight(place, new Date(startKey)), [place, startKey])
+  const only = useMemo(() => hourRange(new Date(startKey), sky.hour), [startKey, sky.hour])
+  const hourText = sky.hour != null ? hourLabel(sky.hour) : null
 
   const forecast = useRemote(`${place.lat},${place.lon}`, (signal) => fetchWeather(place.lat, place.lon, signal))
   const weatherAt = useMemo(() => weatherLookup(forecast ?? null), [forecast])
@@ -49,6 +55,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
             bortle: sky.bortle,
             narrowbandFilter: filterOn,
             kit: { apertureMm: kit.apertureMm, imaging: kit.kind === 'smart-telescope' },
+            only,
           },
           cloudAt,
           weatherAt,
@@ -65,7 +72,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         )
         // Night targets first, best first; the Sun goes at the end as a daytime extra.
         .sort((x, y) => Number(x.a.daytime) - Number(y.a.daytime) || y.a.score - x.a.score),
-    [night, sky, kit, cloudAt, weatherAt],
+    [night, sky, kit, cloudAt, weatherAt, only],
   )
 
   const index = Math.max(0, ranked.findIndex((r) => r.target.id === selectedId))
@@ -107,7 +114,8 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
           {place.name}
         </button>
         <button type="button" className="chip" onClick={() => onNavigate('sky')}>
-          {dateText} · Bortle {sky.bortle}
+          {dateText}
+          {hourText ? ` · ${hourText}` : ''} · Bortle {sky.bortle}
         </button>
         <button type="button" className="chip" onClick={() => onNavigate('equipment')}>
           {kit.name}
@@ -124,7 +132,20 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
 
       <div className="targets__layout">
         <section className="target-list" aria-labelledby="h-list">
-          <h2 id="h-list">Tonight’s targets</h2>
+          <div className="target-list__head">
+            <h2 id="h-list">{hourText ? `Best at ${hourText}` : 'Tonight’s targets'}</h2>
+            <CopyButton
+              label="Copy list"
+              onCopy={() =>
+                copyText(
+                  listText(
+                    `SkyShot targets for ${place.name}, ${dateText}${hourText ? ` at ${hourText}` : ''} (${kit.name})`,
+                    ranked,
+                  ),
+                )
+              }
+            />
+          </div>
           <ol>
             {ranked.map(({ target, a }) => (
               <li key={target.id}>
@@ -140,10 +161,14 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
                     <span className="target-row__meta">
                       {[target.designation, KIND_LABEL[target.kind]].filter(Boolean).join(' · ')} ·{' '}
                       {a.window
-                        ? `${formatTime(a.samples[a.window[0]].time)} – ${formatTime(a.samples[a.window[1]].time)}`
+                        ? `${formatTime(a.samples[a.window[0]].time)} – ${formatTime(a.samples[a.window[1]].time)} · ${
+                            a.peak ? `${compassShort(a.peak.az)} ${Math.round(a.peak.alt)}°` : compassShort(a.samples[a.window[0]].az)
+                          }`
                         : a.daytime
                           ? 'Not today'
-                          : 'Not tonight'}
+                          : hourText
+                            ? `Not at ${hourText}`
+                            : 'Not tonight'}
                       {a.daytime && a.window ? ' · Daytime, filter only' : ''}
                     </span>
                   </span>
@@ -176,6 +201,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
             onSelect={select}
             onBack={() => setDetailOpen(false)}
             onChangeKit={() => onNavigate('equipment')}
+            hourText={hourText}
           />
           )}
         </div>

@@ -244,3 +244,50 @@ describe('reference cases', () => {
     expect(score(newMoon, 'ngc7000', 8, S50, true)).toBeGreaterThan(score(newMoon, 'ngc7000', 8, S50))
   })
 })
+
+describe('one chosen hour', () => {
+  const hour = (h: number) => {
+    const from = new Date(Date.UTC(2026, 10, 12 + (h < 12 ? 1 : 0), h, 0))
+    return { from, to: new Date(from.getTime() + 3_600_000) }
+  }
+
+  it('leaves the whole-night result alone when no hour is chosen', () => {
+    const whole = assess(night, m42, suburban)
+    expect(assess(night, m42, { ...suburban, only: undefined })).toEqual(whole)
+  })
+
+  it('puts the best window inside the chosen hour', () => {
+    const only = hour(22)
+    const a = assess(night, m42, { ...suburban, only })
+    expect(a.window).not.toBeNull()
+    for (const i of a.window!) {
+      const t = a.samples[i].time.getTime()
+      expect(t).toBeGreaterThanOrEqual(only.from.getTime())
+      expect(t).toBeLessThanOrEqual(only.to.getTime())
+    }
+  })
+
+  it('keeps counting usable hours over the whole night', () => {
+    const whole = assess(night, m42, suburban)
+    expect(assess(night, m42, { ...suburban, only: hour(22) }).usableHours).toBe(whole.usableHours)
+  })
+
+  it('gives no window when the target is below the horizon that hour', () => {
+    // Orion is still below the horizon from London at 18:00 in November.
+    const a = assess(night, m42, { ...suburban, only: hour(18) })
+    expect(a.window).toBeNull()
+    expect(a.score).toBe(0)
+  })
+
+  it('scores a target lower in a poor hour than at its best', () => {
+    const best = assess(night, m42, suburban).score
+    expect(assess(night, m42, { ...suburban, only: hour(21) }).score).toBeLessThanOrEqual(best)
+  })
+})
+
+describe('compass', () => {
+  it('gives short compass points', async () => {
+    const { compassShort } = await import('./sky')
+    expect([0, 44, 90, 135, 180, 225, 270, 315, 359].map(compassShort)).toEqual(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'])
+  })
+})

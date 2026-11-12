@@ -7,7 +7,9 @@ import type { Equipment } from '../../lib/equipment'
 import { explainFactor, factorLabel, factorRating } from '../../lib/explain'
 import type { Assessment, CloudLookup } from '../../lib/score'
 import type { WeatherLookup } from '../../lib/weather'
-import { compass, crossings, formatTime, type NightBase } from '../../lib/sky'
+import { compass, compassShort, crossings, formatTime, type NightBase } from '../../lib/sky'
+import { copyText, targetText } from '../../lib/share'
+import { CopyButton } from '../../components/CopyButton'
 import { useRemote } from '../../lib/useRemote'
 import { astrobinUrl, fetchSummary, stellariumUrl, wikiUrl, type WikiImage } from '../../lib/wikipedia'
 import { SolarImage, SolarSafety, SPACE_WEATHER_URL } from './SolarSafety'
@@ -29,6 +31,8 @@ type Props = {
   onSelect: (id: string) => void
   onBack: () => void
   onChangeKit: () => void
+  /** The chosen hour, e.g. "23:00", when planning for one hour only. */
+  hourText?: string | null
 }
 
 const RATING_CLASS: Record<string, string> = { Great: 'great', Good: 'good', Fair: 'fair', Poor: 'poor', 'No data': 'none' }
@@ -56,13 +60,19 @@ export function TargetDetails(props: Props) {
     ? `${t(a.samples[a.window[0]].time)} – ${t(a.samples[a.window[1]].time)}`
     : a.daytime
       ? 'Not today'
-      : 'Not tonight'
+      : props.hourText
+        ? `Not at ${props.hourText}`
+        : 'Not tonight'
   const peakText = a.peak
-    ? `Peaks at ${Math.round(a.peak.alt)}° at ${t(a.peak.time)}, ${compass(a.peak.az)}`
-    : 'Too low or too bright to be worth it'
+    ? `Highest ${Math.round(a.peak.alt)}° at ${t(a.peak.time)}, looking ${compassShort(a.peak.az)} (${compass(a.peak.az)})`
+    : props.hourText && !a.daytime
+      ? 'Too low or too bright that hour. Try another time on the Sky screen.'
+      : 'Too low or too bright to be worth it'
+  const [view, setView] = useState<'framing' | 'photo'>('framing')
+  const showPhotoTab = Boolean(advice.framing && summary?.image)
   const ratingClass = RATING_CLASS[a.rating]
   const isSun = target.kind === 'sun'
-  const when = a.daytime ? 'today' : 'tonight'
+  const when = a.daytime ? 'today' : props.hourText ? `at ${props.hourText}` : 'tonight'
 
   return (
     <article className="details" aria-labelledby="target-name">
@@ -78,7 +88,10 @@ export function TargetDetails(props: Props) {
       <header className="details__hero">
         <div className="details__title">
           <p className="details__eyebrow">{subtitle}</p>
-          <h2 id="target-name">{target.name}</h2>
+          <div className="details__name">
+            <h2 id="target-name">{target.name}</h2>
+            <CopyButton label="Copy" onCopy={() => copyText(targetText(target, a))} />
+          </div>
           <ul className="details__facts" aria-label="Key facts">
             {facts.map((f) => (
               <li key={f}>{f}</li>
@@ -156,12 +169,29 @@ export function TargetDetails(props: Props) {
               </button>
             </div>
             {(advice.framing || summary?.image) && (
-              <figure className="framing-box">
-                {advice.framing ? (
-                  <FramingPreview target={target} kit={kit} image={summary?.image} />
-                ) : (
-                  summary?.image && <TargetPhoto name={target.name} image={summary.image} />
+              <figure className="framing-box" data-view={showPhotoTab ? view : 'framing'}>
+                {showPhotoTab && (
+                  <div className="segmented" role="group" aria-label="Preview">
+                    <button type="button" aria-pressed={view === 'framing'} onClick={() => setView('framing')}>
+                      Framing
+                    </button>
+                    <button type="button" aria-pressed={view === 'photo'} onClick={() => setView('photo')}>
+                      Sample photo
+                    </button>
+                  </div>
                 )}
+                {showPhotoTab && (
+                  <div className="framing-box__photo">
+                    <TargetPhoto name={target.name} image={summary!.image!} />
+                  </div>
+                )}
+                <div className="framing-box__framing">
+                  {advice.framing ? (
+                    <FramingPreview target={target} kit={kit} image={summary?.image} />
+                  ) : (
+                    summary?.image && <TargetPhoto name={target.name} image={summary.image} />
+                  )}
+                </div>
                 <figcaption>
                   {advice.framing
                     ? advice.framing.text
