@@ -79,4 +79,18 @@ describe('Targets screen', () => {
     expect(await screen.findByText('A summary from Wikipedia.')).toBeInTheDocument()
     expect(screen.getByText('From Wikipedia')).toBeInTheDocument()
   })
+
+  it('plans for the chosen night and can hide moon-washed targets', () => {
+    const rows = () => screen.getAllByRole('button').filter((b) => b.classList.contains('target-row')).length
+    // Full moon is on 24 Nov 2026.
+    localStorage.setItem('skyshot:sky', JSON.stringify({ bortle: 5, filter: 'none', date: '2026-11-24', hideMoonWashed: false }))
+    const { unmount } = render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    expect(screen.getByRole('button', { name: /Tue 24 Nov/ })).toBeInTheDocument()
+    const all = rows()
+    unmount()
+    localStorage.setItem('skyshot:sky', JSON.stringify({ bortle: 5, filter: 'none', date: '2026-11-24', hideMoonWashed: true }))
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    expect(rows()).toBeLessThan(all)
+    expect(rows()).toBeGreaterThan(0)
+  })
 })

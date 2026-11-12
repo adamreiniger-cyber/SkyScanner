@@ -1,0 +1,348 @@
+/* Shared layout for the Location, Sky and Equipment screens. Mobile first. */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 880px;
+}
+
+.settings > h2 {
+  font-size: var(--text-xl);
+}
+
+.settings .card {
+  margin: 0;
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings .card p {
+  margin: 0;
+}
+
+.settings h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.settings legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-3);
+}
+
+.settings legend + * {
+  clear: both;
+}
+
+.current__label {
+  font-family: var(--font-body);
+  font-size: var(--text-sm) !important;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.current__name {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Buttons and inputs */
+.button {
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  font-weight: 500;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.button--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.button svg circle,
+.button svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+.input:focus-visible {
+  border-color: var(--accent);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.field label {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.status {
+  font-size: var(--text-sm);
+  min-height: 1.2em;
+}
+
+.status--error {
+  color: var(--fair);
+}
+
+.status--done {
+  color: var(--great);
+}
+
+.status--busy {
+  color: var(--muted);
+}
+
+/* Location */
+.search {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.manual {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+/* Choices: radio cards and result buttons */
+.choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.choices--grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.choice {
+  position: relative;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.choice:hover {
+  border-color: var(--accent);
+}
+
+.choice--radio input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice--radio:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.choice--radio:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.choice--radio:has(input:checked) .choice__title::after {
+  content: '✓';
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.choice__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+
+.choice__hint {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.choice__badge {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* Sky */
+.when {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.when .field {
+  flex: 1;
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.facts div {
+  padding: 10px var(--space-3);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.facts dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.toggle {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  cursor: pointer;
+}
+
+.toggle input {
+  flex: 0 0 auto;
+  appearance: none;
+  width: 52px;
+  height: 32px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  position: relative;
+  cursor: pointer;
+}
+
+.toggle input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s;
+}
+
+.toggle input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle input:checked::after {
+  background: var(--on-accent);
+  transform: translateX(20px);
+}
+
+@media (min-width: 768px) {
+  .choices--grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .when .field {
+    flex: 0 1 260px;
+  }
+}
