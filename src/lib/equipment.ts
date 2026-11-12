@@ -46,6 +46,28 @@ export const EQUIPMENT: Equipment[] = [
     dualBandFilter: 'LP filter',
   },
   {
+    // 30 mm, 160 mm f/5.3, Sony IMX585 (3840 × 2160, 2.9 µm), built-in duo-band. Seestar spec page.
+    id: 'seestar-s30-pro',
+    name: 'Seestar S30 Pro',
+    kind: 'smart-telescope',
+    apertureMm: 30,
+    fov: { w: 3.99, h: 2.24 },
+    pixelScale: 3.74,
+    subSeconds: 10,
+    dualBandFilter: 'Duo-band filter',
+  },
+  {
+    // 90 mm, 340 mm f/3.8, OV50Q40 binned 2×2 (2.394 µm), built-in Hα + OIII filter.
+    id: 'dwarf-draco',
+    name: 'Dwarf Draco',
+    kind: 'smart-telescope',
+    apertureMm: 90,
+    fov: { w: 1.65, h: 1.24 },
+    pixelScale: 1.45,
+    subSeconds: 15,
+    dualBandFilter: 'Duo-band filter',
+  },
+  {
     id: 'dwarf-3',
     name: 'Dwarf 3',
     kind: 'smart-telescope',
@@ -62,6 +84,16 @@ export const EQUIPMENT: Equipment[] = [
     apertureMm: 24,
     fov: { w: 3.19, h: 1.79 },
     pixelScale: 2.99,
+    subSeconds: 15,
+  },
+  {
+    // 30 mm, 150 mm f/5, Sony IMX662 (1920 × 1080, 2.9 µm).
+    id: 'dwarf-mini',
+    name: 'Dwarf Mini',
+    kind: 'smart-telescope',
+    apertureMm: 30,
+    fov: { w: 2.13, h: 1.2 },
+    pixelScale: 3.99,
     subSeconds: 15,
   },
   {

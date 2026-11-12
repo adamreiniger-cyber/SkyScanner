@@ -6,11 +6,12 @@ import {
   combine,
   darknessFactor,
   moonFactor,
+  phaseFactor,
   rate,
   skyFactor,
   type SkySettings,
 } from './score'
-import { compass, computeNight, darkRange, nightStart, separation } from './sky'
+import { compass, computeNight, darkRange, nightStart, phaseName, separation } from './sky'
 
 const LONDON = { lat: 51.5074, lon: -0.1278, name: 'London' }
 // 12 Nov 2026, 21:00 UTC (= London time in November).
@@ -102,6 +103,31 @@ describe('assess', () => {
     expect(result.cloudInWindow).toBeNull()
   })
 
+  it('puts the Sun’s window in daylight, scored only on altitude and cloud', () => {
+    const sun = assess(night, findTarget('sun')!, suburban, () => 0)
+    expect(sun.daytime).toBe(true)
+    expect(sun.window).not.toBeNull()
+    expect(sun.samples[sun.window![0]].sunAlt).toBeGreaterThan(0)
+    expect(sun.factors.map((f) => f.id)).toEqual(['altitude', 'cloud'])
+    expect(sun.score).toBeGreaterThan(0)
+  })
+
+  it('keeps night targets in darkness even with the Sun added', () => {
+    const orion = assess(night, m42, suburban)
+    expect(orion.daytime).toBe(false)
+    expect(orion.samples[orion.window![0]].sunAlt).toBeLessThan(0)
+  })
+
+  it('rates the Moon on its phase, not on moonlight', () => {
+    // 12 Nov 2026 is just after new moon: a thin crescent that sets in twilight.
+    expect(assess(night, findTarget('moon')!, suburban).score).toBeLessThan(40)
+    // At first quarter (17 Nov) the Moon is well placed in the evening.
+    const quarter = assess(computeNight(LONDON, new Date(Date.UTC(2026, 10, 17, 18))), findTarget('moon')!, suburban)
+    expect(quarter.window).not.toBeNull()
+    expect(quarter.factors.find((f) => f.id === 'moon')!.value).toBe(1)
+    expect(quarter.factors.some((f) => f.id === 'sky')).toBe(false)
+  })
+
   it('positions planets with the ephemeris', () => {
     const jupiter = assess(night, findTarget('jupiter')!, suburban)
     expect(jupiter.samples.some((s) => s.alt > 0)).toBe(true)
@@ -133,6 +159,23 @@ describe('factors', () => {
   it('combines factors and skips missing ones', () => {
     expect(combine([{ id: 'altitude', value: 1 }, { id: 'cloud', value: null }])).toBe(100)
     expect(combine([{ id: 'altitude', value: 0 }, { id: 'sky', value: 1 }])).toBe(0)
+  })
+
+  it('prefers a quarter Moon to a full or new one', () => {
+    expect(phaseFactor(0.5)).toBe(1)
+    expect(phaseFactor(1)).toBeCloseTo(0.6)
+    expect(phaseFactor(0.01)).toBeLessThan(0.1)
+  })
+
+  it('names Moon phases', () => {
+    expect([phaseName(0), phaseName(45), phaseName(90), phaseName(180), phaseName(270), phaseName(320)]).toEqual([
+      'New Moon',
+      'Waxing crescent',
+      'First quarter',
+      'Full Moon',
+      'Last quarter',
+      'Waning crescent',
+    ])
   })
 
   it('turns scores into ratings', () => {

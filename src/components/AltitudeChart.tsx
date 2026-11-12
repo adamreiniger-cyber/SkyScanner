@@ -29,8 +29,10 @@ function useWidth<T extends Element>(fallback: number) {
 
 export function AltitudeChart({ a, name, cloudAt }: Props) {
   const [ref, width] = useWidth<HTMLDivElement>(340)
-  const from = a.dark ? Math.max(0, a.dark[0] - PAD_SAMPLES) : 0
-  const to = a.dark ? Math.min(a.samples.length - 1, a.dark[1] + PAD_SAMPLES) : a.samples.length - 1
+  // Night targets show the dark hours plus an hour either side; the Sun shows the whole day.
+  const span = a.dark && !a.daytime
+  const from = span ? Math.max(0, a.dark![0] - PAD_SAMPLES) : 0
+  const to = span ? Math.min(a.samples.length - 1, a.dark![1] + PAD_SAMPLES) : a.samples.length - 1
   const shown = a.samples.slice(from, to + 1)
   const maxAlt = Math.max(60, Math.ceil((Math.max(...shown.map((s) => s.alt)) + 5) / 10) * 10)
 
@@ -75,9 +77,10 @@ export function AltitudeChart({ a, name, cloudAt }: Props) {
     if (x1 > x0) hours.push({ x: x0, w: x1 - x0 - 1, cover })
   }
 
+  const when = a.daytime ? 'the day' : 'the night'
   const label = a.window
-    ? `Altitude of ${name} through the night. Best window ${formatTime(a.samples[a.window[0]].time)} to ${formatTime(a.samples[a.window[1]].time)}${a.peak ? `, peaking at ${Math.round(a.peak.alt)}° at ${formatTime(a.peak.time)}` : ''}.`
-    : `Altitude of ${name} through the night. It is not well placed tonight.`
+    ? `Altitude of ${name} through ${when}. Best window ${formatTime(a.samples[a.window[0]].time)} to ${formatTime(a.samples[a.window[1]].time)}${a.peak ? `, peaking at ${Math.round(a.peak.alt)}° at ${formatTime(a.peak.time)}` : ''}.`
+    : `Altitude of ${name} through ${when}. It is not well placed ${a.daytime ? 'today' : 'tonight'}.`
 
   return (
     <div ref={ref} className="alt-chart">

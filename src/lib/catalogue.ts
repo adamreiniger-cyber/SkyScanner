@@ -15,6 +15,8 @@ export type TargetKind =
   | 'globular-cluster'
   | 'double-star'
   | 'planet'
+  | 'moon'
+  | 'sun'
 
 export type Target = {
   id: string
@@ -25,7 +27,7 @@ export type Target = {
   constellation: string
   ra?: number
   dec?: number
-  body?: 'Jupiter' | 'Saturn' | 'Mars' | 'Venus'
+  body?: 'Jupiter' | 'Saturn' | 'Mars' | 'Venus' | 'Moon' | 'Sun'
   magnitude?: number
   /** Apparent size in arcminutes: [long axis, short axis]. */
   size?: [number, number]
@@ -59,7 +61,12 @@ export const KIND_LABEL: Record<TargetKind, string> = {
   'globular-cluster': 'Globular cluster',
   'double-star': 'Double star',
   planet: 'Planet',
+  moon: 'Earth’s moon',
+  sun: 'Our star',
 }
+
+/** Targets in the daytime sky, scored on altitude and cloud while the Sun is up. */
+export const isDaytime = (kind: TargetKind) => kind === 'sun'
 
 const hms = (h: number, m: number, s = 0) => h + m / 60 + s / 3600
 const dms = (d: number, m: number) => (d < 0 || Object.is(d, -0) ? -1 : 1) * (Math.abs(d) + m / 60)
@@ -344,6 +351,38 @@ export const CATALOGUE: Target[] = [
     description: 'The ringed planet. Even a small telescope shows the rings and its largest moon, Titan.',
     findingTip: 'A steady yellowish point, brighter than the stars around it.',
     imagingNote: 'Planets want short video frames and high magnification, not long deep-sky subs.',
+  },
+  {
+    id: 'moon',
+    name: 'The Moon',
+    kind: 'moon',
+    constellation: '',
+    body: 'Moon',
+    size: [31, 31],
+    distance: '384,400 km',
+    wiki: 'Moon',
+    searchName: 'Moon',
+    description:
+      'Our nearest neighbour, covered in craters, mountain ranges and dark lava plains. Its face changes every night as the phase moves on.',
+    findingTip:
+      'Easy to spot. Look along the terminator, the line between light and shadow, where low sunlight makes craters and mountains stand out.',
+    imagingNote:
+      'The Moon is bright, so short exposures are enough and there’s no need for long stacks. At the eyepiece, a Moon filter or polariser takes the glare off.',
+  },
+  {
+    id: 'sun',
+    name: 'The Sun',
+    kind: 'sun',
+    constellation: '',
+    body: 'Sun',
+    size: [32, 32],
+    distance: '150 million km',
+    wiki: 'Sun',
+    searchName: 'Sun',
+    description:
+      'Our own star. Through a proper solar filter you can watch sunspots come and go, and follow them as the Sun rotates from day to day.',
+    findingTip:
+      'Never look through the scope or finder to aim it. Watch the scope’s shadow on the ground instead: when the shadow of the tube is smallest and roundest, it’s pointing at the Sun.',
   },
 ]
 

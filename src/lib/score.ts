@@ -7,7 +7,7 @@
  * mean of five factors averaged over that window, so one very bad factor
  * (thick cloud, below the horizon) pulls the whole score down.
  */
-import { NARROWBAND_KINDS, type Target, type TargetKind } from './catalogue'
+import { isDaytime, NARROWBAND_KINDS, type Target, type TargetKind } from './catalogue'
 import { darkRange, type NightBase, type TargetSample, trackTarget } from './sky'
 
 export type SkySettings = {
@@ -43,6 +43,8 @@ export type Assessment = {
   rating: Rating
   /** Mean cloud cover in the window, if known. */
   cloudInWindow: number | null
+  /** True for the Sun: the window is in daylight, not darkness. */
+  daytime: boolean
 }
 
 const WEIGHTS: Record<FactorId, number> = { altitude: 0.3, darkness: 0.1, moon: 0.15, cloud: 0.25, sky: 0.2 }
@@ -58,6 +60,8 @@ const MOON_SENSITIVITY: Record<TargetKind, number> = {
   'globular-cluster': 0.7,
   'double-star': 0.15,
   planet: 0.1,
+  moon: 0,
+  sun: 0,
 }
 
 /** How much a bright sky hurts each kind of target. */
@@ -71,10 +75,31 @@ const SKY_SENSITIVITY: Record<TargetKind, number> = {
   'globular-cluster': 0.6,
   'double-star': 0.1,
   planet: 0.05,
+  moon: 0,
+  sun: 0,
 }
 
 /** Bright targets only need nautical twilight; faint ones need full darkness. */
-const NEEDS_FULL_DARK = (kind: TargetKind) => kind !== 'double-star' && kind !== 'planet'
+const NEEDS_FULL_DARK = (kind: TargetKind) => !['double-star', 'planet', 'moon', 'sun'].includes(kind)
+
+/**
+ * For the Moon itself, the "moon" factor rates the phase instead of moonlight.
+ * Craters stand out best along the shadow line, so quarters and crescents beat
+ * a flat, glaring full Moon, and a new Moon can't be seen at all.
+ */
+export function phaseFactor(illum: number): number {
+  if (illum < 0.03) return 0.05
+  if (illum < 0.1) return 0.5 + (0.5 * (illum - 0.03)) / 0.07
+  if (illum <= 0.75) return 1
+  return 1 - (0.4 * (illum - 0.75)) / 0.25
+}
+
+/** The Sun is worth a look from a lower altitude than faint targets. */
+export function sunAltitudeFactor(alt: number): number {
+  if (alt <= 5) return 0
+  if (alt >= 35) return 1
+  return Math.sqrt((alt - 5) / 30)
+}
 
 export function altitudeFactor(alt: number): number {
   if (alt <= 10) return 0
@@ -122,16 +147,15 @@ export function assess(
   const samples = trackTarget(night, target)
   const dark = darkRange(samples)
   const kind = target.kind
+  const daytime = isDaytime(kind)
+  const moonF = (s: TargetSample) =>
+    kind === 'moon' ? phaseFactor(night.moonIllum) : moonFactor(s.moonAlt, s.moonSep, night.moonIllum, kind)
 
   const quality = samples.map((s, i) => {
+    const c = cloudFactor(cloudAt(s.time)) ?? 1
+    if (daytime) return sunAltitudeFactor(s.alt) * c
     if (!dark || i < dark[0] || i > dark[1]) return 0
-    const c = cloudFactor(cloudAt(s.time))
-    return (
-      altitudeFactor(s.alt) *
-      darknessFactor(s.sunAlt, kind) *
-      moonFactor(s.moonAlt, s.moonSep, night.moonIllum, kind) *
-      (c ?? 1)
-    )
+    return altitudeFactor(s.alt) * darknessFactor(s.sunAlt, kind) * moonF(s) * c
   })
 
   let best = 0
@@ -147,16 +171,22 @@ export function assess(
       quality,
       window: null,
       peak: null,
-      factors: [
-        { id: 'altitude', value: 0 },
-        { id: 'darkness', value: dark ? 1 : 0 },
-        { id: 'moon', value: null },
-        { id: 'cloud', value: null },
-        { id: 'sky', value: skyF },
-      ],
+      factors: daytime
+        ? [
+            { id: 'altitude', value: 0 },
+            { id: 'cloud', value: null },
+          ]
+        : [
+            { id: 'altitude', value: 0 },
+            { id: 'darkness', value: dark ? 1 : 0 },
+            { id: 'moon', value: kind === 'moon' ? phaseFactor(night.moonIllum) : null },
+            { id: 'cloud', value: null },
+            ...(kind === 'moon' ? [] : [{ id: 'sky' as const, value: skyF }]),
+          ],
       score: 0,
       rating: 'Poor',
       cloudInWindow: null,
+      daytime,
     }
   }
 
@@ -171,17 +201,34 @@ export function assess(
   const clouds = inWindow.map((s) => cloudAt(s.time)).filter((c): c is number => c != null)
   const cloudInWindow = clouds.length ? clouds.reduce((a, b) => a + b, 0) / clouds.length : null
 
-  const factors: Factor[] = [
-    { id: 'altitude', value: mean((s) => altitudeFactor(s.alt)) },
-    { id: 'darkness', value: mean((s) => darknessFactor(s.sunAlt, kind)) },
-    { id: 'moon', value: mean((s) => moonFactor(s.moonAlt, s.moonSep, night.moonIllum, kind)) },
-    { id: 'cloud', value: cloudFactor(cloudInWindow) },
-    { id: 'sky', value: skyF },
-  ]
+  const factors: Factor[] = daytime
+    ? [
+        { id: 'altitude', value: mean((s) => sunAltitudeFactor(s.alt)) },
+        { id: 'cloud', value: cloudFactor(cloudInWindow) },
+      ]
+    : [
+        { id: 'altitude', value: mean((s) => altitudeFactor(s.alt)) },
+        { id: 'darkness', value: mean((s) => darknessFactor(s.sunAlt, kind)) },
+        { id: 'moon', value: mean(moonF) },
+        { id: 'cloud', value: cloudFactor(cloudInWindow) },
+        // The Moon outshines any light pollution, so sky brightness doesn't count for it.
+        ...(kind === 'moon' ? [] : [{ id: 'sky' as const, value: skyF }]),
+      ]
 
   const peak = inWindow.reduce((a, b) => (b.alt > a.alt ? b : a))
   const score = combine(factors)
-  return { samples, dark, quality, window: [from, to], peak, factors, score, rating: rate(score), cloudInWindow }
+  return {
+    samples,
+    dark,
+    quality,
+    window: [from, to],
+    peak,
+    factors,
+    score,
+    rating: rate(score),
+    cloudInWindow,
+    daytime,
+  }
 }
 
 /** Weighted geometric mean, ignoring factors with no data. Returns 0 to 100. */

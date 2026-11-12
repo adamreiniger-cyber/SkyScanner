@@ -67,6 +67,22 @@ export function advise(target: Target, kit: Equipment): Advice {
     tips.push({ label: 'Separation', value: `${sep}″` })
     tips.push({ label: 'Split', value: sep >= limit * 2 ? 'Easily' : sep >= limit ? 'Just' : 'No' })
     if (target.double.colours) tips.push({ label: 'Colours', value: target.double.colours })
+  } else if (target.kind === 'sun') {
+    if (kit.kind === 'smart-telescope') {
+      tips.push({ label: 'Filter', value: 'Solar filter, fitted over the front' })
+      tips.push({ label: 'Mode', value: 'Solar mode' })
+    } else {
+      tips.push({ label: 'Filter', value: 'Certified white-light filter over the front (ISO 12312-2)' })
+      if (kit.magnification) tips.push({ label: 'Magnification', value: `${kit.magnification}×` })
+    }
+  } else if (target.kind === 'moon') {
+    if (kit.kind === 'smart-telescope') {
+      tips.push({ label: 'Mode', value: 'Solar system or Moon mode' })
+      tips.push({ label: 'Filter', value: kit.dualBandFilter ? `${kit.dualBandFilter} off` : 'None' })
+    } else {
+      if (kit.magnification) tips.push({ label: 'Magnification', value: `${kit.magnification}×, then higher for craters` })
+      tips.push({ label: 'Filter', value: 'Moon filter or polariser (optional)' })
+    }
   } else if (target.kind === 'planet') {
     if (kit.kind === 'smart-telescope') {
       tips.push({ label: 'Mode', value: 'Solar system mode' })
@@ -91,10 +107,22 @@ export function advise(target: Target, kit: Equipment): Advice {
   }
 
   let note = target.imagingNote ?? null
+  if (target.kind === 'sun') {
+    note =
+      kit.kind === 'smart-telescope'
+        ? 'Fit the solar filter made for your scope before you point it at the Sun, and keep it on until you point away.'
+        : 'Only use a filter that covers the whole front of the scope or both binocular lenses. Never use an eyepiece solar filter, and cap the finder.'
+  }
   if (!note && kit.kind === 'smart-telescope' && narrowband && kit.dualBandFilter) {
     note = `The ${kit.dualBandFilter.toLowerCase()} pulls the nebula’s glow out of a bright sky.`
   }
-  if (!note && kit.kind === 'smart-telescope' && !narrowband && kit.dualBandFilter && target.kind !== 'double-star') {
+  if (
+    !note &&
+    kit.kind === 'smart-telescope' &&
+    !narrowband &&
+    kit.dualBandFilter &&
+    !['double-star', 'moon', 'sun'].includes(target.kind)
+  ) {
     note = `Leave the ${kit.dualBandFilter.toLowerCase()} off: it dims starlight, which is what galaxies and clusters are made of.`
   }
   return { framing: framing(target, kit), tips, note }

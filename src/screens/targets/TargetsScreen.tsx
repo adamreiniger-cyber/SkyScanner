@@ -44,8 +44,16 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         const a = assess(night, target, { bortle: sky.bortle, narrowbandFilter: filterOn }, cloudAt)
         return { target, a, filterOn: filterOn && NARROWBAND_KINDS.has(target.kind) }
       })
-        .filter(({ a }) => !sky.hideMoonWashed || (a.factors.find((f) => f.id === 'moon')?.value ?? 1) >= 0.5)
-        .sort((x, y) => y.a.score - x.a.score),
+        // The Moon and Sun aren't washed out by moonlight, so the moon filter leaves them alone.
+        .filter(
+          ({ target, a }) =>
+            !sky.hideMoonWashed ||
+            target.kind === 'moon' ||
+            target.kind === 'sun' ||
+            (a.factors.find((f) => f.id === 'moon')?.value ?? 1) >= 0.5,
+        )
+        // Night targets first, best first; the Sun goes at the end as a daytime extra.
+        .sort((x, y) => Number(x.a.daytime) - Number(y.a.daytime) || y.a.score - x.a.score),
     [night, sky, kit, cloudAt],
   )
 
@@ -103,7 +111,10 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
                       {[target.designation, KIND_LABEL[target.kind]].filter(Boolean).join(' · ')} ·{' '}
                       {a.window
                         ? `${formatTime(a.samples[a.window[0]].time)} – ${formatTime(a.samples[a.window[1]].time)}`
-                        : 'Not tonight'}
+                        : a.daytime
+                          ? 'Not today'
+                          : 'Not tonight'}
+                      {a.daytime && a.window ? ' · Daytime, filter only' : ''}
                     </span>
                   </span>
                 </button>

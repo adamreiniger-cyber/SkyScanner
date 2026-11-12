@@ -1,7 +1,7 @@
 /** Plain-English text for the score breakdown. Pure, so it can be unit-tested. */
 import type { Target } from './catalogue'
 import type { Assessment, Factor, FactorId, Rating } from './score'
-import { compass, crossings, formatTime, type NightBase } from './sky'
+import { compass, crossings, formatTime, phaseName, type NightBase } from './sky'
 
 export const FACTOR_LABEL: Record<FactorId, string> = {
   altitude: 'Altitude',
@@ -9,6 +9,11 @@ export const FACTOR_LABEL: Record<FactorId, string> = {
   moon: 'Moon',
   cloud: 'Cloud',
   sky: 'Sky brightness',
+}
+
+/** The Moon's own "moon" factor rates its phase, so it gets its own label. */
+export function factorLabel(id: FactorId, target: Target): string {
+  return id === 'moon' && target.kind === 'moon' ? 'Phase' : FACTOR_LABEL[id]
 }
 
 export const BORTLE_LABEL = [
@@ -42,6 +47,10 @@ export function explainFactor(f: Factor, ctx: Ctx): string {
 
   switch (f.id) {
     case 'altitude': {
+      if (a.daytime && !a.peak) {
+        const best = Math.max(...a.samples.map((s) => s.alt), -90)
+        return best <= 0 ? 'Below the horizon all day from here.' : `Only reaches ${Math.round(best)}° today, too low to be worth it.`
+      }
       if (!a.peak) {
         const best = Math.max(...range.map((s) => s.alt), -90)
         return best <= 0 ? 'Below the horizon all night from here.' : `Only reaches ${Math.round(best)}° in the dark, too low to be worth it.`
@@ -50,7 +59,7 @@ export function explainFactor(f: Factor, ctx: Ctx): string {
       return `Peaks at ${Math.round(a.peak.alt)}° at ${t(a.peak.time)}, in the ${compass(a.peak.az)}.${low}`
     }
     case 'darkness': {
-      if (target.kind === 'planet' || target.kind === 'double-star') return 'Bright enough to enjoy in twilight.'
+      if (['planet', 'double-star', 'moon'].includes(target.kind)) return 'Bright enough to enjoy in twilight.'
       const astro = crossings(range, (s) => s.sunAlt, -18)
       const start = astro.find((c) => !c.rising)
       const end = astro.find((c) => c.rising)
@@ -58,6 +67,14 @@ export function explainFactor(f: Factor, ctx: Ctx): string {
       return `Fully dark from ${t(start.time)} to ${t(end.time)}.`
     }
     case 'moon': {
+      if (target.kind === 'moon') {
+        const pct = Math.round(night.moonIllum * 100)
+        const name = phaseName(night.moonPhase)
+        if (night.moonIllum < 0.03) return `${name}: too close to the Sun to see tonight.`
+        if (night.moonIllum > 0.9)
+          return `${name}, ${pct}% lit. Bright and flat-looking: craters show best near the edge of the shadow.`
+        return `${name}, ${pct}% lit. Craters stand out in relief along the shadow line.`
+      }
       const pct = Math.round(night.moonIllum * 100)
       const events = crossings(range, (s) => s.moonAlt, 0)
         .map((c) => `${c.rising ? 'rises' : 'sets'} at ${t(c.time)}`)

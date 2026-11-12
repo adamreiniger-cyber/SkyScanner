@@ -14,12 +14,11 @@ describe('Targets screen', () => {
     localStorage.clear()
   })
 
-  it('lists tonight’s targets best first, even offline', async () => {
+  it('lists tonight’s targets best first, with the Sun last, even offline', async () => {
     render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
-    const scores = screen
-      .getAllByRole('button')
-      .filter((b) => b.classList.contains('target-row'))
-      .map((b) => Number(b.querySelector('.target-row__score')!.textContent))
+    const rows = screen.getAllByRole('button').filter((b) => b.classList.contains('target-row'))
+    expect(rows.at(-1)).toHaveTextContent('The Sun')
+    const scores = rows.slice(0, -1).map((b) => Number(b.querySelector('.target-row__score')!.textContent))
     expect(scores.length).toBeGreaterThan(10)
     expect([...scores].sort((a, b) => b - a)).toEqual(scores)
     expect(await screen.findByText('No cloud forecast')).toBeInTheDocument()
@@ -91,6 +90,21 @@ describe('Targets screen', () => {
     localStorage.setItem('skyshot:sky', JSON.stringify({ bortle: 5, filter: 'none', date: '2026-11-24', hideMoonWashed: true }))
     render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
     expect(rows()).toBeLessThan(all)
-    expect(rows()).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: /The Moon/ })).toBeInTheDocument()
+  })
+
+  it('puts a solar safety warning on the Sun', () => {
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: /The Sun/ }))
+    expect(screen.getByRole('heading', { name: /Never look at the Sun without a solar filter/ })).toBeInTheDocument()
+    expect(screen.getByText(/Good today|Great today|Fair today|Poor today/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /SpaceWeatherLive/ })).toBeInTheDocument()
+    expect(screen.queryByText('Sky brightness')).not.toBeInTheDocument()
+  })
+
+  it('rates the Moon by its phase', () => {
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: /The Moon/ }))
+    expect(screen.getByText('Phase')).toBeInTheDocument()
   })
 })
