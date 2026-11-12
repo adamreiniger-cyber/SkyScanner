@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { NightModeToggle } from './components/NightModeToggle'
 import { usePersistentState } from './lib/usePersistentState'
 import { SCREENS, type ScreenId } from './screens/screens'
+import { EquipmentScreen } from './screens/equipment/EquipmentScreen'
+import { LocationScreen } from './screens/location/LocationScreen'
+import { SkyScreen } from './screens/sky/SkyScreen'
 import { TargetsScreen } from './screens/targets/TargetsScreen'
 
 export default function App() {
@@ -22,17 +25,12 @@ export default function App() {
         <NightModeToggle on={night} onChange={setNight} />
       </header>
 
-      {current.id === 'targets' ? (
-        <main className="screen" aria-label="Targets">
-          <TargetsScreen onNavigate={setScreen} />
-        </main>
-      ) : (
-        <main className="screen" aria-labelledby="screen-title">
-          <h2 id="screen-title">{current.label}</h2>
-          <p className="muted">{current.blurb}</p>
-          <p className="muted small">The redesign is in progress. This screen is a placeholder.</p>
-        </main>
-      )}
+      <main className="screen" aria-labelledby={current.id === 'targets' ? undefined : 'screen-title'} aria-label={current.id === 'targets' ? 'Targets' : undefined}>
+        {current.id === 'targets' && <TargetsScreen onNavigate={setScreen} />}
+        {current.id === 'location' && <LocationScreen />}
+        {current.id === 'sky' && <SkyScreen />}
+        {current.id === 'equipment' && <EquipmentScreen onDone={() => setScreen('targets')} />}
+      </main>
 
       <nav className="tabbar" aria-label="Main">
         {SCREENS.map((s) => (

@@ -3,7 +3,15 @@ import { CATALOGUE, KIND_LABEL, NARROWBAND_KINDS } from '../../lib/catalogue'
 import { cloudLookup, fetchCloud } from '../../lib/cloud'
 import { findEquipment } from '../../lib/equipment'
 import { assess } from '../../lib/score'
-import { DEFAULT_EQUIPMENT_ID, DEFAULT_PLACE, DEFAULT_SKY, KEYS, type SkyChoice } from '../../lib/settings'
+import {
+  DEFAULT_EQUIPMENT_ID,
+  DEFAULT_PLACE,
+  DEFAULT_SKY,
+  KEYS,
+  planningTime,
+  withSkyDefaults,
+  type SkyChoice,
+} from '../../lib/settings'
 import { computeNight, formatTime, nightStart, type Place } from '../../lib/sky'
 import { usePersistentState } from '../../lib/usePersistentState'
 import { useRemote } from '../../lib/useRemote'
@@ -16,13 +24,14 @@ type Props = { onNavigate: (screen: ScreenId) => void; now?: Date }
 export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
   const [place] = usePersistentState<Place>(KEYS.place, DEFAULT_PLACE)
   const [kitId] = usePersistentState(KEYS.equipment, DEFAULT_EQUIPMENT_ID)
-  const [sky] = usePersistentState<SkyChoice>(KEYS.sky, DEFAULT_SKY)
+  const [savedSky] = usePersistentState<SkyChoice>(KEYS.sky, DEFAULT_SKY)
+  const sky = useMemo(() => withSkyDefaults(savedSky), [savedSky])
   const [selectedId, setSelectedId] = usePersistentState<string | null>(KEYS.target, null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [now] = useState(() => nowProp ?? new Date())
 
   const kit = findEquipment(kitId)
-  const startKey = nightStart(now).getTime()
+  const startKey = nightStart(planningTime(sky.date, now)).getTime()
   const night = useMemo(() => computeNight(place, new Date(startKey)), [place, startKey])
 
   const forecast = useRemote(`${place.lat},${place.lon}`, (signal) => fetchCloud(place.lat, place.lon, signal))
@@ -34,7 +43,9 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         const filterOn = sky.filter !== 'none' || Boolean(kit.dualBandFilter)
         const a = assess(night, target, { bortle: sky.bortle, narrowbandFilter: filterOn }, cloudAt)
         return { target, a, filterOn: filterOn && NARROWBAND_KINDS.has(target.kind) }
-      }).sort((x, y) => y.a.score - x.a.score),
+      })
+        .filter(({ a }) => !sky.hideMoonWashed || (a.factors.find((f) => f.id === 'moon')?.value ?? 1) >= 0.5)
+        .sort((x, y) => y.a.score - x.a.score),
     [night, sky, kit, cloudAt],
   )
 
@@ -82,7 +93,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
                 <button
                   type="button"
                   className="target-row"
-                  aria-current={target.id === current.target.id ? 'true' : undefined}
+                  aria-current={target.id === current?.target.id ? 'true' : undefined}
                   onClick={() => select(target.id)}
                 >
                   <span className={`target-row__score score-text--${a.rating.toLowerCase()}`}>{a.score}</span>
@@ -102,6 +113,12 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         </section>
 
         <div className="targets__detail">
+          {!current && (
+            <p className="muted">
+              No targets to show. Turn off “Hide targets the Moon washes out” on the Sky screen to see them all.
+            </p>
+          )}
+          {current && (
           <TargetDetails
             key={current.target.id}
             target={current.target}
@@ -118,6 +135,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
             onBack={() => setDetailOpen(false)}
             onChangeKit={() => onNavigate('equipment')}
           />
+          )}
         </div>
       </div>
     </div>
