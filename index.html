@@ -17,10 +17,44 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" />
-    <title>SkyShot · Tonight's Targets</title>
+    <title>SkyShot · Tonight's best night-sky targets for your telescope</title>
+    <meta name="description" content="Free night-sky planner for stargazers and astrophotographers. See tonight's best nebulae, galaxies, clusters, doubles, Moon and planets for your location, cloud forecast and kit, including Seestar and Dwarf smart telescopes." />
+    <link rel="canonical" href="https://webuiltthis.co.uk/SkyScanner/" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./og-image.png" />
+
+    <!-- Link previews (Facebook, Discord, WhatsApp, Reddit, X, Slack). Absolute URLs are required here. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SkyShot" />
+    <meta property="og:title" content="SkyShot · Tonight's best night-sky targets" />
+    <meta property="og:description" content="Free planner: the best targets tonight for your location, sky, cloud forecast and telescope, smart scope or binoculars." />
+    <meta property="og:url" content="https://webuiltthis.co.uk/SkyScanner/" />
+    <meta property="og:image" content="https://webuiltthis.co.uk/SkyScanner/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SkyShot logo: a star inside a camera viewfinder, on a starry sky" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "SkyShot",
+        "alternateName": "Tonight's Targets",
+        "url": "https://webuiltthis.co.uk/SkyScanner/",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any (web browser)",
+        "description": "Night-sky observing and astrophotography planner that ranks tonight's best targets for your location, sky brightness, weather and equipment.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>SkyShot: tonight's best night-sky targets</h1>
+      <p>SkyShot is a free stargazing and astrophotography planner. It ranks tonight's best deep-sky objects, double stars, the Moon and planets for your location, cloud forecast, sky brightness and equipment, with presets for Seestar and Dwarf smart telescopes, binoculars and visual scopes, and a red night mode. Please enable JavaScript to use it.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

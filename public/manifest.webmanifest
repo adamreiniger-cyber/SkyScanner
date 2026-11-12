@@ -1,0 +1,11 @@
+{
+  "name": "SkyShot · Tonight's Targets",
+  "short_name": "SkyShot",
+  "description": "Tonight's best night-sky targets for your location and kit.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070a18",
+  "theme_color": "#070a18",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
