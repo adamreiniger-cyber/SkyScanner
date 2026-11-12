@@ -41,3 +41,28 @@ describe('advise', () => {
     expect(resolvingLimit(dob)).toBeLessThan(resolvingLimit(binos))
   })
 })
+
+describe('the Sun, the Moon and the newer scopes', () => {
+  const sun = findTarget('sun')!
+  const moon = findTarget('moon')!
+
+  it('always names a front solar filter for the Sun', () => {
+    expect(advise(sun, s50).tips.find((t) => t.label === 'Filter')!.value).toMatch(/solar filter/i)
+    expect(advise(sun, dob).tips.find((t) => t.label === 'Filter')!.value).toMatch(/ISO 12312-2/)
+    expect(advise(sun, binos).note).toMatch(/Never use an eyepiece solar filter/)
+  })
+
+  it('turns the duo-band filter off for the Moon', () => {
+    expect(advise(moon, findEquipment('dwarf-3')).tips.find((t) => t.label === 'Filter')!.value).toBe('Duo-band filter off')
+  })
+
+  it('frames the whole Moon in the new scopes', () => {
+    expect(framing(moon, findEquipment('dwarf-mini'))!.fit).toBe('fits')
+    expect(framing(moon, findEquipment('dwarf-draco'))!.fit).toBe('fits')
+    expect(framing(findTarget('m42')!, findEquipment('seestar-s30-pro'))!.fit).toBe('fits')
+  })
+
+  it('has presets for the Dwarf Mini, Dwarf Draco and Seestar S30 Pro', () => {
+    for (const id of ['dwarf-mini', 'dwarf-draco', 'seestar-s30-pro']) expect(findEquipment(id).id).toBe(id)
+  })
+})

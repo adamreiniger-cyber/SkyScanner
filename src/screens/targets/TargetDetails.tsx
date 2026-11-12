@@ -3,11 +3,12 @@ import { FramingPreview } from '../../components/FramingPreview'
 import { advise } from '../../lib/advice'
 import { KIND_LABEL, NARROWBAND_KINDS, type Target } from '../../lib/catalogue'
 import type { Equipment } from '../../lib/equipment'
-import { explainFactor, FACTOR_LABEL, factorRating } from '../../lib/explain'
+import { explainFactor, factorLabel, factorRating } from '../../lib/explain'
 import type { Assessment, CloudLookup } from '../../lib/score'
 import { compass, crossings, formatTime, type NightBase } from '../../lib/sky'
 import { useRemote } from '../../lib/useRemote'
 import { astrobinUrl, fetchSummary, stellariumUrl, wikiUrl } from '../../lib/wikipedia'
+import { SolarImage, SolarSafety, SPACE_WEATHER_URL } from './SolarSafety'
 
 type Neighbour = { id: string; name: string } | null
 
@@ -48,11 +49,17 @@ export function TargetDetails(props: Props) {
     sets && `Sets ${t(sets.time)}`,
   ].filter((f): f is string => Boolean(f))
 
-  const windowText = a.window ? `${t(a.samples[a.window[0]].time)} – ${t(a.samples[a.window[1]].time)}` : 'Not tonight'
+  const windowText = a.window
+    ? `${t(a.samples[a.window[0]].time)} – ${t(a.samples[a.window[1]].time)}`
+    : a.daytime
+      ? 'Not today'
+      : 'Not tonight'
   const peakText = a.peak
     ? `Peaks at ${Math.round(a.peak.alt)}° at ${t(a.peak.time)}, ${compass(a.peak.az)}`
     : 'Too low or too bright to be worth it'
   const ratingClass = RATING_CLASS[a.rating]
+  const isSun = target.kind === 'sun'
+  const when = a.daytime ? 'today' : 'tonight'
 
   return (
     <article className="details" aria-labelledby="target-name">
@@ -78,7 +85,9 @@ export function TargetDetails(props: Props) {
         <div className="details__summary">
           <div className={`score score--${ratingClass}`}>
             <span className="score__value">{a.score}</span>
-            <span className="score__label">{a.rating} tonight</span>
+            <span className="score__label">
+              {a.rating} {when}
+            </span>
           </div>
           <div className="window">
             <span className="window__label">Best window</span>
@@ -88,11 +97,13 @@ export function TargetDetails(props: Props) {
         </div>
       </header>
 
+      {isSun && <SolarSafety />}
+
       <div className="details__grid">
         <div className="details__col">
           <section className="card" aria-labelledby="h-tonight">
             <div className="card__head">
-              <h3 id="h-tonight">Tonight</h3>
+              <h3 id="h-tonight">{a.daytime ? 'Today' : 'Tonight'}</h3>
               <span className="muted small">Altitude above the horizon</span>
             </div>
             <AltitudeChart a={a} name={target.name} cloudAt={cloudAt} />
@@ -106,7 +117,7 @@ export function TargetDetails(props: Props) {
                 return (
                   <li key={f.id} className="factor">
                     <div className="factor__head">
-                      <span>{FACTOR_LABEL[f.id]}</span>
+                      <span>{factorLabel(f.id, target)}</span>
                       <span className={`factor__rating factor__rating--${RATING_CLASS[rating]}`}>{rating}</span>
                     </div>
                     <div className="factor__bar" aria-hidden="true">
@@ -168,6 +179,7 @@ export function TargetDetails(props: Props) {
 
           <section className="card" aria-labelledby="h-about">
             <h3 id="h-about">About</h3>
+            {isSun && <SolarImage />}
             <p>{summary ?? target.description}</p>
             {summary && <p className="muted small">From Wikipedia</p>}
             <nav aria-label="Look it up" className="links">
@@ -183,6 +195,12 @@ export function TargetDetails(props: Props) {
                 AstroBin
                 <ExternalIcon />
               </a>
+              {isSun && (
+                <a href={SPACE_WEATHER_URL} target="_blank" rel="noreferrer">
+                  SpaceWeatherLive
+                  <ExternalIcon />
+                </a>
+              )}
             </nav>
           </section>
         </div>

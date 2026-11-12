@@ -5,7 +5,7 @@
  * so it always contains one whole stretch of darkness. The Sun and Moon are
  * worked out once per night and shared by every target.
  */
-import { Body, Equator, Horizon, Illumination, Observer } from 'astronomy-engine'
+import { Body, Equator, Horizon, Illumination, MoonPhase, Observer } from 'astronomy-engine'
 import type { Target } from './catalogue'
 
 export type Place = { lat: number; lon: number; name: string }
@@ -24,6 +24,8 @@ export type NightBase = {
   samples: BaseSample[]
   /** Fraction of the Moon's disc that is lit, 0 to 1, at local midnight. */
   moonIllum: number
+  /** Moon's phase angle at local midnight: 0 new, 90 first quarter, 180 full, 270 last quarter. */
+  moonPhase: number
 }
 
 export type TargetSample = BaseSample & {
@@ -65,7 +67,12 @@ export function computeNight(place: Place, now: Date): NightBase {
     })
   }
   const midnight = new Date(start + 12 * 3_600_000)
-  return { place, samples, moonIllum: Illumination(Body.Moon, midnight).phase_fraction }
+  return {
+    place,
+    samples,
+    moonIllum: Illumination(Body.Moon, midnight).phase_fraction,
+    moonPhase: MoonPhase(midnight),
+  }
 }
 
 /** Track a target across the night. Catalogue RA/Dec are J2000, which is close enough for planning. */
@@ -129,6 +136,19 @@ export function crossings<S extends BaseSample>(
     }
   }
   return out
+}
+
+/** Everyday name for a Moon phase angle in degrees. */
+export function phaseName(deg: number): string {
+  const d = ((deg % 360) + 360) % 360
+  if (d < 10 || d >= 350) return 'New Moon'
+  if (d < 80) return 'Waxing crescent'
+  if (d < 100) return 'First quarter'
+  if (d < 170) return 'Waxing gibbous'
+  if (d < 190) return 'Full Moon'
+  if (d < 260) return 'Waning gibbous'
+  if (d < 280) return 'Last quarter'
+  return 'Waning crescent'
 }
 
 const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']

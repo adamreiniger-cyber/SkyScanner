@@ -557,3 +557,40 @@
     display: none;
   }
 }
+
+/* The Sun: safety warning and today's image */
+.solar-safety {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin-block: var(--space-4);
+  padding: var(--space-4);
+  border: 2px solid var(--fair);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.solar-safety svg {
+  flex: none;
+  fill: none;
+  stroke: var(--fair);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.solar-safety h3 {
+  margin: 0 0 var(--space-2);
+  color: var(--fair);
+  font-size: var(--text-lg);
+}
+.solar-safety p {
+  margin: 0;
+}
+.solar-image {
+  margin: 0 0 var(--space-4);
+}
+.solar-image img {
+  display: block;
+  width: min(100%, 256px);
+  height: auto;
+  border-radius: 50%;
+}
