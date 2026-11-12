@@ -38,7 +38,6 @@ export function TargetDetails(props: Props) {
   const t = formatTime
   const summary = useRemote(target.wiki, (signal) => fetchSummary(target.wiki, signal))
   const advice = advise(target, kit)
-  const framed = Boolean(advice.framing && target.size)
 
   const subtitle = [target.designation, KIND_LABEL[target.kind], target.constellation].filter(Boolean).join(' · ')
   const rise = crossings(a.samples, (s) => s.alt, 0)
@@ -103,11 +102,6 @@ export function TargetDetails(props: Props) {
 
       {isSun && <SolarSafety />}
 
-      {/* The photo shows inside the framing preview when there is one, so it isn't shown twice. */}
-      {!framed && (
-        <TargetPhoto name={target.name} wiki={target.wiki} image={summary === undefined ? undefined : (summary?.image ?? null)} />
-      )}
-
       <div className="details__grid">
         <div className="details__col">
           <section className="card" aria-labelledby="h-tonight">
@@ -161,11 +155,17 @@ export function TargetDetails(props: Props) {
                 Change
               </button>
             </div>
-            {advice.framing && (
+            {(advice.framing || summary?.image) && (
               <figure className="framing-box">
-                <FramingPreview target={target} kit={kit} image={summary?.image} />
+                {advice.framing ? (
+                  <FramingPreview target={target} kit={kit} image={summary?.image} />
+                ) : (
+                  summary?.image && <TargetPhoto name={target.name} image={summary.image} />
+                )}
                 <figcaption>
-                  {advice.framing.text}
+                  {advice.framing
+                    ? advice.framing.text
+                    : 'Unable to create a framing preview: this target’s size isn’t known.'}
                   {summary?.image && (
                     <span className="framing-box__credit muted small">
                       Photo from <a href={wikiUrl(target.wiki)} target="_blank" rel="noreferrer">Wikipedia</a>, where
@@ -266,34 +266,23 @@ function ExternalIcon() {
 }
 
 /**
- * The target's lead photo from Wikipedia. Space is held while it loads, and it
- * disappears if there's no photo or it fails. Hidden in red night mode, where a
- * bright colour photo would spoil dark adaptation.
+ * The target's photo on its own, for targets with no framing preview. Hidden in
+ * red night mode, where a bright colour photo would spoil dark adaptation.
  */
-function TargetPhoto({ name, wiki, image }: { name: string; wiki: string; image: WikiImage | null | undefined }) {
+function TargetPhoto({ name, image }: { name: string; image: WikiImage }) {
   const [tries, setTries] = useState(0)
-  const src = image ? (tries === 0 ? image.src : tries === 1 ? image.fallback : undefined) : undefined
-  if (image === null || (image && !src)) return null
+  const src = tries === 0 ? image.src : tries === 1 ? image.fallback : undefined
+  if (!src) return null
   return (
-    <figure className="details__photo">
-      <div className="details__photo-frame">
-        {image && (
-          <img
-            src={src}
-            width={image.width}
-            height={image.height}
-            alt={`Photo of ${name}`}
-            loading="lazy"
-            decoding="async"
-            onError={() => setTries((n) => n + 1)}
-          />
-        )}
-      </div>
-      {image && (
-        <figcaption className="muted small">
-          Photo from <a href={wikiUrl(wiki)} target="_blank" rel="noreferrer">Wikipedia</a>, where you’ll find its credit and licence.
-        </figcaption>
-      )}
-    </figure>
+    <img
+      className="framing-photo"
+      src={src}
+      width={image.width}
+      height={image.height}
+      alt={`Photo of ${name}`}
+      loading="lazy"
+      decoding="async"
+      onError={() => setTries((n) => n + 1)}
+    />
   )
 }
