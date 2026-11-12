@@ -40,6 +40,23 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      # Without a target folder, the upload lands in the FTP account's top
+      # folder instead of the site's. Stop before anything is uploaded.
+      - name: Check the deploy settings
+        env:
+          # Accept it as a variable or, if it was added on the Secrets tab, a secret.
+          REMOTE_DIR: ${{ vars.FTP_REMOTE_DIR || secrets.FTP_REMOTE_DIR }}
+        run: |
+          if [ -z "$REMOTE_DIR" ]; then
+            echo "::error::FTP_REMOTE_DIR is empty. Add it under Settings > Secrets and variables > Actions > Variables, e.g. public_html/SkyScanner/"
+            exit 1
+          fi
+          case "$REMOTE_DIR" in
+            */) ;;
+            *) echo "::error::FTP_REMOTE_DIR must end with a slash, e.g. public_html/SkyScanner/"; exit 1 ;;
+          esac
+          echo "FTP_REMOTE_DIR is set (${#REMOTE_DIR} characters)."
+
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -78,7 +95,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
           local-dir: ./dist/
-          server-dir: ${{ vars.FTP_REMOTE_DIR }}
+          server-dir: ${{ vars.FTP_REMOTE_DIR || secrets.FTP_REMOTE_DIR }}
           # Only changed files are uploaded. Old files on the host are never
           # wiped, so a bad config can't delete the rest of the site.
           dangerous-clean-slate: false
