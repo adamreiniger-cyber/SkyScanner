@@ -21,7 +21,7 @@ describe('Targets screen', () => {
     const scores = rows.slice(0, -1).map((b) => Number(b.querySelector('.target-row__score')!.textContent))
     expect(scores.length).toBeGreaterThan(10)
     expect([...scores].sort((a, b) => b - a)).toEqual(scores)
-    expect(await screen.findByText('No cloud forecast')).toBeInTheDocument()
+    expect(await screen.findByText(/No weather forecast for this night in London/)).toBeInTheDocument()
   })
 
   it('opens a target’s details and goes back', () => {

@@ -2,12 +2,14 @@
 import type { Target } from './catalogue'
 import type { Assessment, Factor, FactorId, Rating } from './score'
 import { compass, crossings, formatTime, phaseName, type NightBase } from './sky'
+import type { WeatherLookup } from './weather'
 
 export const FACTOR_LABEL: Record<FactorId, string> = {
   altitude: 'Altitude',
   darkness: 'Darkness',
   moon: 'Moon',
   cloud: 'Cloud',
+  conditions: 'Conditions',
   sky: 'Visibility',
   time: 'Time',
 }
@@ -46,6 +48,8 @@ type Ctx = {
   filterOn: boolean
   /** Name and kind of the equipment in use, for the visibility and time text. */
   kit?: { name: string; imaging: boolean }
+  /** Hourly weather, for the conditions text. */
+  weatherAt?: WeatherLookup
   timeZone?: string
 }
 
@@ -125,6 +129,23 @@ export function explainFactor(f: Factor, ctx: Ctx): string {
               ? `Faint against this sky with ${kit}. A darker site would help a lot.`
               : `Very hard to pick out of this sky with ${kit}.`
       return `${sky} ${how}${filter}`
+    }
+    case 'conditions': {
+      const hours = win.map((s) => ctx.weatherAt?.(s.time)).filter((h) => h != null)
+      if (!hours.length) return 'No forecast for wind, dew or rain.'
+      const max = (f: (h: (typeof hours)[number]) => number | null) =>
+        Math.max(-Infinity, ...hours.map(f).filter((v): v is number => v != null))
+      const notes: string[] = []
+      const gust = max((h) => h.gusts ?? h.wind)
+      const rain = max((h) => h.rain)
+      const dew = Math.min(Infinity, ...hours.map((h) => h.dewSpread).filter((v): v is number => v != null))
+      const jet = max((h) => h.jet)
+      if (rain >= 30) notes.push(`${Math.round(rain)}% chance of rain.`)
+      if (gust > 25) notes.push(`Gusts to ${Math.round(gust)} km/h will shake the ${ctx.kit?.imaging === false ? 'view' : 'images'}.`)
+      if (dew < 2.5 && target.kind !== 'sun') notes.push('Dew is likely, so keep the optics warm or covered.')
+      if (jet > 100 && ['planet', 'moon', 'double-star', 'sun'].includes(target.kind))
+        notes.push('A strong jet stream overhead makes the air unsteady, so fine detail will shimmer.')
+      return notes.length ? notes.join(' ') : 'Calm and dry, with no dew expected.'
     }
     case 'time': {
       if (!a.window) return 'Not well placed at all.'

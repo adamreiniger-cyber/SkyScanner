@@ -594,3 +594,48 @@
   height: auto;
   border-radius: 50%;
 }
+
+/* Tonight's weather outlook, under the settings chips */
+.outlook {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.outlook--clear {
+  border-left-color: var(--great);
+}
+.outlook--mixed {
+  border-left-color: var(--good);
+}
+.outlook--cloudy {
+  border-left-color: var(--fair);
+}
+.outlook p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.outlook strong {
+  font-size: 1rem;
+}
+.outlook span {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.outlook__icon {
+  flex: none;
+}
+.outlook__moon {
+  fill: var(--warm);
+}
+.outlook__cloud {
+  fill: var(--muted);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}

@@ -110,7 +110,7 @@ describe('assess', () => {
     expect(sun.daytime).toBe(true)
     expect(sun.window).not.toBeNull()
     expect(sun.samples[sun.window![0]].sunAlt).toBeGreaterThan(0)
-    expect(sun.factors.map((f) => f.id)).toEqual(['altitude', 'cloud', 'time'])
+    expect(sun.factors.map((f) => f.id)).toEqual(['altitude', 'cloud', 'conditions', 'time'])
     expect(sun.score).toBeGreaterThan(0)
   })
 
