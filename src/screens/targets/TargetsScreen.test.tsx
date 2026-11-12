@@ -92,6 +92,29 @@ describe('Targets screen', () => {
     expect(screen.getByText(/where you’ll find its credit and licence/)).toBeInTheDocument()
   })
 
+  it('shows the photo with a note when there is no framing preview', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              url.includes('wikipedia')
+                ? { extract: 'A double star.', thumbnail: { source: 'https://upload.wikimedia.org/a/b/320px-Albireo.jpg', width: 320, height: 240 } }
+                : {},
+            ),
+            { status: 200 },
+          ),
+        ),
+      ),
+    )
+    render(<TargetsScreen onNavigate={() => {}} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: /Albireo/ }))
+    expect(await screen.findByRole('img', { name: 'Photo of Albireo' })).toBeInTheDocument()
+    expect(screen.getByText(/Unable to create a framing preview/)).toBeInTheDocument()
+    expect(screen.getAllByRole('img', { name: /Photo of/ })).toHaveLength(1)
+  })
+
   it('plans for the chosen night and can hide moon-washed targets', () => {
     const rows = () => screen.getAllByRole('button').filter((b) => b.classList.contains('target-row')).length
     // Full moon is on 24 Nov 2026.
