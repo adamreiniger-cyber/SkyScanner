@@ -1,0 +1,45 @@
+/*
+ * Design tokens. Every colour, size and radius used in the app comes from here.
+ * Red night mode redefines the colour tokens, so nothing else needs to know about it.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #070a18;
+  --surface: #11173a;
+  --line: rgb(150 170 255 / 0.18);
+  --text: #e8ecff;
+  --muted: #98a2cc;
+  --accent: #8fb0ff;
+  --on-accent: #070a18;
+  --great: #6be3a4;
+  --good: #ffd36b;
+  --fair: #ff9a7a;
+
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font-body);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius: 14px;
+  --tap: 44px;
+  --content-max: 1200px;
+}
+
+:root[data-theme='night'] {
+  --bg: #0a0000;
+  --surface: #1a0303;
+  --line: rgb(255 60 60 / 0.22);
+  --text: #ff6a5c;
+  --muted: #b8443a;
+  --accent: #ff3b30;
+  --on-accent: #0a0000;
+  --great: #ff6a5c;
+  --good: #e0483d;
+  --fair: #a8322a;
+}

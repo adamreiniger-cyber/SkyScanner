@@ -1,0 +1,58 @@
+name: Deploy to web host (FTP)
+
+# Builds the site and uploads dist/ to the web host over FTP.
+#
+# It runs on every push to main (that is, every merged pull request) and can
+# also be started by hand from the Actions tab.
+#
+# SAFETY SWITCH: nothing is uploaded until the repository variable
+# FTP_DEPLOY_ENABLED is set to "true". This stops the unfinished rebuild from
+# replacing the live v9 site before it is ready.
+#
+# Required secrets (Settings > Secrets and variables > Actions > Secrets):
+#   FTP_SERVER      e.g. ftp.webuiltthis.co.uk
+#   FTP_USERNAME
+#   FTP_PASSWORD
+# Required variables (same page, Variables tab):
+#   FTP_DEPLOY_ENABLED  "true" to allow uploads
+#   FTP_REMOTE_DIR      folder on the host, with a trailing slash,
+#                       e.g. /public_html/SkyScanner/
+# Optional variables:
+#   FTP_PROTOCOL        ftps (default) or ftp if the host has no TLS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.FTP_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      - name: Upload dist/ over FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./dist/
+          server-dir: ${{ vars.FTP_REMOTE_DIR }}
+          # Only changed files are uploaded. Old files on the host are never
+          # wiped, so a bad config can't delete the rest of the site.
+          dangerous-clean-slate: false

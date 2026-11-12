@@ -36,13 +36,14 @@ The target list or home screen will be reworked to fit around these, but it isn'
 
 ## Tech stack
 
-The previous build (v9) used **React + Vite**, with `astronomy-engine` for ephemerides and `three.js`. The stack is open. The recommended stack for the redesign:
+The previous build (v9) used React + Vite, with `astronomy-engine` for ephemerides and `three.js`. The rebuild uses:
 
-- **React 18 + TypeScript + Vite.** Keeps the existing logic portable and outputs a static build that FTP hosting can serve.
-- **Styling:** CSS with custom properties (design tokens) plus CSS Modules, or Tailwind if preferred. Pick one and use it everywhere. Define all colours, spacing and type as tokens so red night mode is a token swap, not a CSS filter.
-- **Astronomy:** `astronomy-engine`. Do not hand-roll ephemeris maths.
-- **Testing:** Vitest for logic (scoring, visibility windows, rise/set). Playwright for responsive smoke tests at the breakpoints above.
-- **Lint and format:** ESLint + Prettier.
+- **React 19 + TypeScript (strict) + Vite.** The build is static, so the FTP host can serve it as-is.
+- **Styling:** plain CSS with custom properties. All colours, spacing, radii and type are tokens in `src/styles/tokens.css`. Red night mode is `<html data-theme="night">`, which redefines the colour tokens. Never use a CSS filter for it, and never hard-code a colour in a component.
+- **Astronomy:** `astronomy-engine` (add it when the first feature needs it). Do not hand-roll ephemeris maths.
+- **Testing:** Vitest + Testing Library (jsdom) for logic and components. Playwright responsive smoke tests at the breakpoints above are planned but not set up yet.
+- **Lint:** oxlint (`.oxlintrc.json`).
+- **Node 22** (CI uses 22).
 
 The site is served from a **sub-path** (`/SkyScanner/`), so set `base` in `vite.config` accordingly, or use `'./'`. Never hard-code root-relative asset URLs.
 
@@ -64,33 +65,48 @@ Google Analytics (gtag `G-19J4LN1XH4`) is in `index.html`. Keep it unless Adam s
 
 ## Deployment
 
-Today Adam builds locally and uploads `dist/` to the web host by FTP. The plan is to **automate this**:
+Deploys are automated with GitHub Actions. Nobody uploads by hand any more.
 
-- A GitHub Actions workflow builds on push to `main` and deploys `dist/` over FTP/FTPS to the host's `SkyScanner` folder.
-- FTP host, username, password and remote path live **only** in GitHub Actions secrets (`FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `FTP_REMOTE_DIR`). Never commit credentials or put them in code, docs or chat.
+- `.github/workflows/ci.yml` runs lint, tests and a build on every pull request and every push to `main`.
+- `.github/workflows/deploy.yml` builds and uploads `dist/` over FTP on every push to `main`. It can also be started by hand from the Actions tab. It uses `SamKirkland/FTP-Deploy-Action`, which uploads only changed files and never wipes the server folder.
+- **Safety switch:** the deploy job does nothing until the repository variable `FTP_DEPLOY_ENABLED` is `true`. Leave it off until the rebuild is good enough to replace the live v9 site.
+- Secrets: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`. Variables: `FTP_DEPLOY_ENABLED`, `FTP_REMOTE_DIR` (with a trailing slash), and optionally `FTP_PROTOCOL` (`ftps` by default, `ftp` if the host has no TLS). They live **only** in GitHub settings. Never commit credentials or put them in code, docs or chat.
 - Work happens on branches and goes to `main` through a pull request, so merging is the "deploy" button.
 
 ## Commands
 
-Fill these in once the project is scaffolded:
-
 ```bash
 npm install        # install deps
 npm run dev        # local dev server
-npm run build      # production build to dist/
+npm run build      # type-check, then production build to dist/
 npm run preview    # serve the build locally
-npm test           # unit tests (Vitest)
-npm run e2e        # responsive smoke tests (Playwright)
-npm run lint       # ESLint
+npm test           # unit and component tests (Vitest, single run)
+npm run test:watch # tests in watch mode
+npm run lint       # oxlint
+npm run typecheck  # TypeScript only
+```
+
+## Layout
+
+```
+src/
+  main.tsx            entry, imports global styles
+  App.tsx             app shell: header, night-mode toggle, screen nav
+  screens/            one folder or file per screen; screens.ts lists them in priority order
+  components/         shared UI
+  lib/                pure logic and hooks (storage.ts, usePersistentState.ts), unit-tested
+  styles/tokens.css   design tokens, including red night mode
+  styles/base.css     reset, layout, breakpoints
+public/               copied as-is (favicon.svg)
 ```
 
 ## Conventions
 
-- TypeScript strict mode. Put data and logic in `src/lib/` (pure functions, unit-tested) and UI in `src/components/` and `src/screens/`.
+- TypeScript strict mode. Put data and logic in `src/lib/` (pure functions, unit-tested) and UI in `src/components/` and `src/screens/`. Co-locate tests as `*.test.ts(x)`.
 - The target catalogue (names, descriptions, finding tips, filter advice) lives in data files, not inside components.
 - Equipment presets are data too. Adding a new scope should mean adding one entry, not editing logic.
 - Accessibility: semantic HTML, visible focus states, WCAG AA contrast in both normal and red night mode, and respect for `prefers-reduced-motion`.
-- Persist user choices (location, equipment, sky settings, night mode) in `localStorage`, behind a small typed wrapper that tolerates it being unavailable.
+- Persist user choices (location, equipment, sky settings, night mode) with `usePersistentState` / `src/lib/storage.ts`. Never call `localStorage` directly, because it can be unavailable.
 - Keep the bundle lean, because it's used on phones in the field. Lazy-load `three.js` and other heavy views.
 - Commit messages: short imperative summary line, for example "Add equipment preset for Seestar S30 Pro".
 
