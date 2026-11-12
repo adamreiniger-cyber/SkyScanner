@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Logo } from './components/Logo'
 import { NightModeToggle } from './components/NightModeToggle'
 import { usePersistentState } from './lib/usePersistentState'
 import { SCREENS, type ScreenId } from './screens/screens'
@@ -21,7 +22,9 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="brand">SkyShot</h1>
+        <h1 className="brand">
+          <Logo />
+        </h1>
         <NightModeToggle on={night} onChange={setNight} />
       </header>
 

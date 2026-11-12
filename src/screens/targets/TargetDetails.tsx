@@ -5,6 +5,7 @@ import { KIND_LABEL, NARROWBAND_KINDS, type Target } from '../../lib/catalogue'
 import type { Equipment } from '../../lib/equipment'
 import { explainFactor, factorLabel, factorRating } from '../../lib/explain'
 import type { Assessment, CloudLookup } from '../../lib/score'
+import type { WeatherLookup } from '../../lib/weather'
 import { compass, crossings, formatTime, type NightBase } from '../../lib/sky'
 import { useRemote } from '../../lib/useRemote'
 import { astrobinUrl, fetchSummary, stellariumUrl, wikiUrl } from '../../lib/wikipedia'
@@ -20,6 +21,7 @@ type Props = {
   bortle: number
   filterOn: boolean
   cloudAt: CloudLookup
+  weatherAt: WeatherLookup
   position: { index: number; total: number }
   prev: Neighbour
   next: Neighbour
@@ -134,6 +136,7 @@ export function TargetDetails(props: Props) {
                         bortle: props.bortle,
                         filterOn: props.filterOn,
                         kit: { name: kit.name, imaging: kit.kind === 'smart-telescope' },
+                        weatherAt: props.weatherAt,
                       })}
                     </p>
                   </li>

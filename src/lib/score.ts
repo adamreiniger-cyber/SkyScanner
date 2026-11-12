@@ -9,6 +9,7 @@
  */
 import { isDaytime, NARROWBAND_KINDS, type Target, type TargetKind } from './catalogue'
 import { darkRange, type NightBase, STEP_MINUTES, type TargetSample, trackTarget } from './sky'
+import type { Hour, WeatherLookup } from './weather'
 
 export type SkySettings = {
   /** Bortle class, 1 (darkest) to 9 (inner city). */
@@ -22,7 +23,7 @@ export type SkySettings = {
 /** Cloud cover in percent for a time, or null if there's no forecast for it. */
 export type CloudLookup = (time: Date) => number | null
 
-export type FactorId = 'altitude' | 'darkness' | 'moon' | 'cloud' | 'sky' | 'time'
+export type FactorId = 'altitude' | 'darkness' | 'moon' | 'cloud' | 'conditions' | 'sky' | 'time'
 
 export type Factor = {
   id: FactorId
@@ -56,6 +57,7 @@ const WEIGHTS: Record<FactorId, number> = {
   darkness: 0.1,
   moon: 0.25,
   cloud: 0.25,
+  conditions: 0.15,
   sky: 0.35,
   time: 0.15,
 }
@@ -183,6 +185,28 @@ export function skyFactor(sky: SkySettings, target: Pick<Target, 'kind' | 'magni
   return glow * logistic(limit - target.magnitude - 2)
 }
 
+/** Targets viewed at high magnification, where unsteady air (poor seeing) blurs detail. */
+const HIGH_POWER: ReadonlySet<TargetKind> = new Set(['planet', 'moon', 'double-star', 'sun'])
+
+/**
+ * Everything about the weather except cloud: chance of rain, dew, wind shake
+ * and, for planets and doubles, how steady the air is. 1 is perfect; null when
+ * there's no forecast for the hour.
+ */
+export function conditionsFactor(h: Hour | null, kind: TargetKind, imaging: boolean): number | null {
+  if (!h) return null
+  let f = 1
+  if (h.rain != null) f *= 1 - 0.8 * clamp(h.rain / 100, 0, 1)
+  if (h.dewSpread != null && kind !== 'sun') f *= h.dewSpread < 1 ? 0.7 : h.dewSpread < 2.5 ? 0.85 : 1
+  const gust = h.gusts ?? h.wind
+  if (gust != null) {
+    const bands = imaging ? [40, 0.45, 25, 0.7, 15, 0.9] : [50, 0.6, 35, 0.8, 25, 0.95]
+    f *= gust > bands[0] ? bands[1] : gust > bands[2] ? bands[3] : gust > bands[4] ? bands[5] : 1
+  }
+  if (h.jet != null && HIGH_POWER.has(kind)) f *= h.jet > 150 ? 0.55 : h.jet > 100 ? 0.75 : h.jet > 60 ? 0.9 : 1
+  return f
+}
+
 /** Hours worth spending: imaging faint targets wants a couple of hours, bright ones far less. */
 export function hoursNeeded(kind: TargetKind, imaging: boolean): number {
   if (kind === 'double-star' || kind === 'planet' || kind === 'moon' || kind === 'sun') return 0.5
@@ -210,6 +234,7 @@ export function assess(
   target: Target,
   sky: SkySettings,
   cloudAt: CloudLookup = () => null,
+  weatherAt: WeatherLookup = () => null,
 ): Assessment {
   const samples = trackTarget(night, target)
   const dark = darkRange(samples)
@@ -218,8 +243,9 @@ export function assess(
   const moonF = (s: TargetSample) =>
     kind === 'moon' ? phaseFactor(night.moonIllum) : moonFactor(s.moonAlt, s.moonSep, night.moonIllum, kind)
 
+  const imagingKit = sky.kit?.imaging ?? true
   const quality = samples.map((s, i) => {
-    const c = cloudFactor(cloudAt(s.time)) ?? 1
+    const c = (cloudFactor(cloudAt(s.time)) ?? 1) * (conditionsFactor(weatherAt(s.time), kind, imagingKit) ?? 1)
     if (daytime) return sunAltitudeFactor(s.alt) * c
     if (!dark || i < dark[0] || i > dark[1]) return 0
     return altitudeFactor(s.alt) * darknessFactor(s.sunAlt, kind) * moonF(s) * c
@@ -244,12 +270,14 @@ export function assess(
         ? [
             { id: 'altitude', value: 0 },
             { id: 'cloud', value: null },
+            { id: 'conditions', value: null },
           ]
         : [
             { id: 'altitude', value: 0 },
             { id: 'darkness', value: dark ? 1 : 0 },
             { id: 'moon', value: kind === 'moon' ? phaseFactor(night.moonIllum) : null },
             { id: 'cloud', value: null },
+            { id: 'conditions', value: null },
             ...(kind === 'moon' ? [] : [{ id: 'sky' as const, value: skyF }]),
           ],
       score: 0,
@@ -270,11 +298,16 @@ export function assess(
   const mean = (f: (s: TargetSample) => number) => inWindow.reduce((sum, s) => sum + f(s), 0) / inWindow.length
   const clouds = inWindow.map((s) => cloudAt(s.time)).filter((c): c is number => c != null)
   const cloudInWindow = clouds.length ? clouds.reduce((a, b) => a + b, 0) / clouds.length : null
+  const conds = inWindow
+    .map((s) => conditionsFactor(weatherAt(s.time), kind, imagingKit))
+    .filter((c): c is number => c != null)
+  const conditions = conds.length ? conds.reduce((a, b) => a + b, 0) / conds.length : null
 
   const factors: Factor[] = daytime
     ? [
         { id: 'altitude', value: mean((s) => sunAltitudeFactor(s.alt)) },
         { id: 'cloud', value: cloudFactor(cloudInWindow) },
+        { id: 'conditions', value: conditions },
         { id: 'time', value: timeFactor(usableHours, hoursNeeded(kind, imaging)) },
       ]
     : [
@@ -282,6 +315,7 @@ export function assess(
         { id: 'darkness', value: mean((s) => darknessFactor(s.sunAlt, kind)) },
         { id: 'moon', value: mean(moonF) },
         { id: 'cloud', value: cloudFactor(cloudInWindow) },
+        { id: 'conditions', value: conditions },
         // The Moon outshines any light pollution, so sky brightness doesn't count for it.
         ...(kind === 'moon' ? [] : [{ id: 'sky' as const, value: skyF }]),
         { id: 'time', value: timeFactor(usableHours, hoursNeeded(kind, imaging)) },

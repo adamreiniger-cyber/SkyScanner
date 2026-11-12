@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CATALOGUE, KIND_LABEL, NARROWBAND_KINDS } from '../../lib/catalogue'
-import { cloudLookup, fetchCloud } from '../../lib/cloud'
+import { cloudLookup, fetchWeather, nightOutlook, weatherLookup } from '../../lib/weather'
 import { findEquipment } from '../../lib/equipment'
 import { assess } from '../../lib/score'
 import {
@@ -34,8 +34,9 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
   const startKey = nightStart(planningTime(sky.date, now)).getTime()
   const night = useMemo(() => computeNight(place, new Date(startKey)), [place, startKey])
 
-  const forecast = useRemote(`${place.lat},${place.lon}`, (signal) => fetchCloud(place.lat, place.lon, signal))
-  const cloudAt = useMemo(() => cloudLookup(forecast ?? null), [forecast])
+  const forecast = useRemote(`${place.lat},${place.lon}`, (signal) => fetchWeather(place.lat, place.lon, signal))
+  const weatherAt = useMemo(() => weatherLookup(forecast ?? null), [forecast])
+  const cloudAt = useMemo(() => cloudLookup(weatherAt), [weatherAt])
 
   const ranked = useMemo(
     () =>
@@ -50,6 +51,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
             kit: { apertureMm: kit.apertureMm, imaging: kit.kind === 'smart-telescope' },
           },
           cloudAt,
+          weatherAt,
         )
         return { target, a, filterOn: filterOn && NARROWBAND_KINDS.has(target.kind) }
       })
@@ -63,7 +65,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         )
         // Night targets first, best first; the Sun goes at the end as a daytime extra.
         .sort((x, y) => Number(x.a.daytime) - Number(y.a.daytime) || y.a.score - x.a.score),
-    [night, sky, kit, cloudAt],
+    [night, sky, kit, cloudAt, weatherAt],
   )
 
   const index = Math.max(0, ranked.findIndex((r) => r.target.id === selectedId))
@@ -82,6 +84,18 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
     }
   }
 
+  const outlook = useMemo(
+    () =>
+      nightOutlook(
+        night.samples,
+        weatherAt,
+        sky.date
+          ? `on ${new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(startKey))}`
+          : 'tonight',
+      ),
+    [night, weatherAt, sky.date, startKey],
+  )
+
   const dateText = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(
     new Date(startKey),
   )
@@ -98,8 +112,15 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         <button type="button" className="chip" onClick={() => onNavigate('equipment')}>
           {kit.name}
         </button>
-        {forecast === null && <span className="context__note">No cloud forecast</span>}
       </div>
+
+      <section className={`outlook outlook--${forecast === undefined ? 'loading' : outlook.level}`} aria-live="polite">
+        <OutlookIcon level={forecast === undefined ? 'none' : outlook.level} />
+        <p>
+          <strong>{forecast === undefined ? 'Checking the forecast…' : `${outlook.headline} in ${place.name}`}</strong>
+          {forecast !== undefined && <span>{outlook.details.join(' · ')}</span>}
+        </p>
+      </section>
 
       <div className="targets__layout">
         <section className="target-list" aria-labelledby="h-list">
@@ -148,6 +169,7 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
             bortle={sky.bortle}
             filterOn={current.filterOn}
             cloudAt={cloudAt}
+            weatherAt={weatherAt}
             position={{ index, total: ranked.length }}
             prev={neighbour(index - 1)}
             next={neighbour(index + 1)}
@@ -159,5 +181,18 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
         </div>
       </div>
     </div>
+  )
+}
+
+function OutlookIcon({ level }: { level: 'clear' | 'mixed' | 'cloudy' | 'none' }) {
+  return (
+    <svg className="outlook__icon" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+      {level !== 'cloudy' && (
+        <path className="outlook__moon" d="M15 4a8 8 0 1 0 9 10.5A7 7 0 0 1 15 4z" />
+      )}
+      {level !== 'clear' && (
+        <path className="outlook__cloud" d="M8 23h13a4.5 4.5 0 0 0 .4-9 6 6 0 0 0-11.6 1.6A3.8 3.8 0 0 0 8 23z" />
+      )}
+    </svg>
   )
 }
