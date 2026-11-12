@@ -686,3 +686,12 @@
 .framing__sky {
   fill: var(--bg);
 }
+
+.framing-box__credit {
+  display: block;
+  margin-top: var(--space-1);
+}
+/* The photo is hidden in night mode, so its credit goes too. */
+:root[data-theme='night'] .framing-box__credit {
+  display: none;
+}
