@@ -85,10 +85,11 @@ describe('Targets screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /Orion Nebula/ }))
     expect(await screen.findByText('A summary from Wikipedia.')).toBeInTheDocument()
     expect(screen.getByText('From Wikipedia')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Photo of Orion Nebula' })).toHaveAttribute(
-      'src',
-      'https://upload.wikimedia.org/a/b/960px-M42.jpg',
-    )
+    // The photo appears once, inside the framing preview, with its credit.
+    expect(screen.queryByRole('img', { name: 'Photo of Orion Nebula' })).not.toBeInTheDocument()
+    const photo = document.querySelector('.framing image.framing__photo:not(.framing__photo--outside)')
+    expect(photo).toHaveAttribute('href', 'https://upload.wikimedia.org/a/b/960px-M42.jpg')
+    expect(screen.getByText(/where you’ll find its credit and licence/)).toBeInTheDocument()
   })
 
   it('plans for the chosen night and can hide moon-washed targets', () => {

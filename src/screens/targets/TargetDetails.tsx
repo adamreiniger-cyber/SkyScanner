@@ -38,6 +38,7 @@ export function TargetDetails(props: Props) {
   const t = formatTime
   const summary = useRemote(target.wiki, (signal) => fetchSummary(target.wiki, signal))
   const advice = advise(target, kit)
+  const framed = Boolean(advice.framing && target.size)
 
   const subtitle = [target.designation, KIND_LABEL[target.kind], target.constellation].filter(Boolean).join(' · ')
   const rise = crossings(a.samples, (s) => s.alt, 0)
@@ -102,7 +103,10 @@ export function TargetDetails(props: Props) {
 
       {isSun && <SolarSafety />}
 
-      <TargetPhoto name={target.name} wiki={target.wiki} image={summary === undefined ? undefined : (summary?.image ?? null)} />
+      {/* The photo shows inside the framing preview when there is one, so it isn't shown twice. */}
+      {!framed && (
+        <TargetPhoto name={target.name} wiki={target.wiki} image={summary === undefined ? undefined : (summary?.image ?? null)} />
+      )}
 
       <div className="details__grid">
         <div className="details__col">
@@ -160,7 +164,15 @@ export function TargetDetails(props: Props) {
             {advice.framing && (
               <figure className="framing-box">
                 <FramingPreview target={target} kit={kit} image={summary?.image} />
-                <figcaption>{advice.framing.text}</figcaption>
+                <figcaption>
+                  {advice.framing.text}
+                  {summary?.image && (
+                    <span className="framing-box__credit muted small">
+                      Photo from <a href={wikiUrl(target.wiki)} target="_blank" rel="noreferrer">Wikipedia</a>, where
+                      you’ll find its credit and licence.
+                    </span>
+                  )}
+                </figcaption>
               </figure>
             )}
             {advice.tips.length > 0 && (
