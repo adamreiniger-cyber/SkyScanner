@@ -1,0 +1,140 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+/* Layout: mobile first. Bottom tab bar on phones, top nav from tablet up. */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100dvh;
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  padding-top: max(var(--space-4), env(safe-area-inset-top));
+}
+
+.brand {
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.night-toggle {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 var(--space-4);
+}
+
+.night-toggle[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.screen {
+  padding: var(--space-4);
+}
+
+.tabbar {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab {
+  background: none;
+  border: 0;
+  padding: var(--space-3) var(--space-2);
+  color: var(--muted);
+}
+
+.tab[aria-current='page'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .app {
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .tabbar {
+    grid-row: 2;
+    position: static;
+    display: flex;
+    gap: var(--space-2);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 0 var(--space-4);
+  }
+
+  .tab {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .screen {
+    grid-row: 3;
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
