@@ -8,19 +8,21 @@
  * (thick cloud, below the horizon) pulls the whole score down.
  */
 import { isDaytime, NARROWBAND_KINDS, type Target, type TargetKind } from './catalogue'
-import { darkRange, type NightBase, type TargetSample, trackTarget } from './sky'
+import { darkRange, type NightBase, STEP_MINUTES, type TargetSample, trackTarget } from './sky'
 
 export type SkySettings = {
   /** Bortle class, 1 (darkest) to 9 (inner city). */
   bortle: number
   /** True when a light-pollution, duo-band, UHC or OIII filter is in use. */
   narrowbandFilter: boolean
+  /** The equipment in use. Without it, a 50 mm smart telescope is assumed. */
+  kit?: { apertureMm: number; imaging: boolean }
 }
 
 /** Cloud cover in percent for a time, or null if there's no forecast for it. */
 export type CloudLookup = (time: Date) => number | null
 
-export type FactorId = 'altitude' | 'darkness' | 'moon' | 'cloud' | 'sky'
+export type FactorId = 'altitude' | 'darkness' | 'moon' | 'cloud' | 'sky' | 'time'
 
 export type Factor = {
   id: FactorId
@@ -43,11 +45,36 @@ export type Assessment = {
   rating: Rating
   /** Mean cloud cover in the window, if known. */
   cloudInWindow: number | null
+  /** Hours the target stays at least half as good as its best. */
+  usableHours: number
   /** True for the Sun: the window is in daylight, not darkness. */
   daytime: boolean
 }
 
-const WEIGHTS: Record<FactorId, number> = { altitude: 0.3, darkness: 0.1, moon: 0.15, cloud: 0.25, sky: 0.2 }
+const WEIGHTS: Record<FactorId, number> = {
+  altitude: 0.25,
+  darkness: 0.1,
+  moon: 0.25,
+  cloud: 0.25,
+  sky: 0.35,
+  time: 0.15,
+}
+
+/** Sky brightness overhead for each Bortle class, in magnitudes per square arcsecond. */
+const BORTLE_SQM = [21.9, 21.9, 21.7, 21.4, 20.9, 20.2, 19.5, 18.9, 18.4, 18.0]
+
+/** Faintest star visible to the naked eye for each Bortle class. */
+const BORTLE_NELM = [7.8, 7.8, 7.3, 6.8, 6.3, 5.8, 5.5, 5.0, 4.5, 4.0]
+
+/** Kinds judged on surface brightness: faint glows that light pollution drowns. */
+const EXTENDED_KINDS: ReadonlySet<TargetKind> = new Set([
+  'emission-nebula',
+  'reflection-nebula',
+  'planetary-nebula',
+  'supernova-remnant',
+  'galaxy',
+  'globular-cluster',
+])
 
 /** How much moonlight hurts each kind of target (0 = not at all, 1 = fully). */
 const MOON_SENSITIVITY: Record<TargetKind, number> = {
@@ -121,10 +148,50 @@ export function moonFactor(moonAlt: number, moonSep: number, illum: number, kind
   return 1 - 0.9 * illum * MOON_SENSITIVITY[kind] * proximity
 }
 
-export function skyFactor(sky: SkySettings, kind: TargetKind): number {
-  let penalty = ((clamp(sky.bortle, 1, 9) - 1) / 8) * SKY_SENSITIVITY[kind]
-  if (sky.narrowbandFilter && NARROWBAND_KINDS.has(kind)) penalty *= 0.5
-  return 1 - 0.85 * penalty
+/** Average surface brightness in magnitudes per square arcsecond, from magnitude and size. */
+export function surfaceBrightness(magnitude: number, size: [number, number]): number {
+  const areaArcmin = (Math.PI / 4) * size[0] * size[1]
+  return magnitude + 2.5 * Math.log10(areaArcmin * 3600)
+}
+
+/**
+ * How easily this kit shows this target under this sky, 0 to 1.
+ *
+ * Faint glows (nebulae, galaxies, globulars) compare their surface brightness
+ * with the sky's. Stacking smart telescopes and bigger apertures dig deeper, and
+ * a narrowband filter helps emission nebulae. Everything else (clusters of
+ * bright stars, doubles, planets) only feels the sky a little.
+ */
+export function skyFactor(sky: SkySettings, target: Pick<Target, 'kind' | 'magnitude' | 'size'>): number {
+  const { kind } = target
+  const filter = sky.narrowbandFilter && NARROWBAND_KINDS.has(kind)
+  if (!EXTENDED_KINDS.has(kind) || target.magnitude == null || !target.size) {
+    let penalty = ((clamp(sky.bortle, 1, 9) - 1) / 8) * SKY_SENSITIVITY[kind]
+    if (filter) penalty *= 0.5
+    return 1 - 0.85 * penalty
+  }
+  const kit = sky.kit ?? { apertureMm: 50, imaging: true }
+  const bortle = clamp(Math.round(sky.bortle), 1, 9)
+  const logistic = (x: number) => 1 / (1 + Math.exp(-x / 0.8))
+  // How the target's glow compares with the sky's, plus what the kit adds.
+  const contrast = BORTLE_SQM[bortle] - surfaceBrightness(target.magnitude, target.size)
+  const reach = kit.imaging ? 1.5 + 2.5 * Math.log10(kit.apertureMm / 30) : 1 + 2 * Math.log10(kit.apertureMm / 50)
+  const glow = logistic(contrast + reach + (filter ? 1.5 : 0) + 1)
+  if (kit.imaging) return glow
+  // At the eyepiece the whole object also has to be well above the faintest star you can see.
+  const limit = BORTLE_NELM[bortle] + 5 * Math.log10(kit.apertureMm / 7)
+  return glow * logistic(limit - target.magnitude - 2)
+}
+
+/** Hours worth spending: imaging faint targets wants a couple of hours, bright ones far less. */
+export function hoursNeeded(kind: TargetKind, imaging: boolean): number {
+  if (kind === 'double-star' || kind === 'planet' || kind === 'moon' || kind === 'sun') return 0.5
+  return imaging ? 2 : 1
+}
+
+/** 1 when the target is well placed for as long as it needs, falling off when time is short. */
+export function timeFactor(hours: number, needed: number): number {
+  return Math.sqrt(clamp(hours / needed, 0, 1))
 }
 
 export function cloudFactor(cloud: number | null): number | null {
@@ -163,7 +230,9 @@ export function assess(
     if (q > quality[best]) best = i
   })
 
-  const skyF = skyFactor(sky, kind)
+  const skyF = skyFactor(sky, target)
+  const imaging = sky.kit?.imaging ?? true
+  const usableHours = (quality.filter((q) => q > 0 && q >= quality[best] * 0.5).length * STEP_MINUTES) / 60
   if (quality[best] <= 0) {
     return {
       samples,
@@ -186,6 +255,7 @@ export function assess(
       score: 0,
       rating: 'Poor',
       cloudInWindow: null,
+      usableHours: 0,
       daytime,
     }
   }
@@ -205,6 +275,7 @@ export function assess(
     ? [
         { id: 'altitude', value: mean((s) => sunAltitudeFactor(s.alt)) },
         { id: 'cloud', value: cloudFactor(cloudInWindow) },
+        { id: 'time', value: timeFactor(usableHours, hoursNeeded(kind, imaging)) },
       ]
     : [
         { id: 'altitude', value: mean((s) => altitudeFactor(s.alt)) },
@@ -213,6 +284,7 @@ export function assess(
         { id: 'cloud', value: cloudFactor(cloudInWindow) },
         // The Moon outshines any light pollution, so sky brightness doesn't count for it.
         ...(kind === 'moon' ? [] : [{ id: 'sky' as const, value: skyF }]),
+        { id: 'time', value: timeFactor(usableHours, hoursNeeded(kind, imaging)) },
       ]
 
   const peak = inWindow.reduce((a, b) => (b.alt > a.alt ? b : a))
@@ -227,22 +299,30 @@ export function assess(
     score,
     rating: rate(score),
     cloudInWindow,
+    usableHours,
     daytime,
   }
 }
 
-/** Weighted geometric mean, ignoring factors with no data. Returns 0 to 100. */
+/**
+ * Weighted geometric mean, ignoring factors with no data, capped by the
+ * weakest factor: a target is only as good as its worst problem, so one very
+ * poor factor can't be averaged away by good ones. Returns 0 to 100.
+ */
 export function combine(factors: Factor[]): number {
   let weight = 0
   let logSum = 0
+  let weakest = 1
   for (const f of factors) {
     if (f.value == null) continue
     const w = WEIGHTS[f.id]
     if (f.value <= 0) return 0
     weight += w
     logSum += w * Math.log(f.value)
+    weakest = Math.min(weakest, f.value)
   }
-  return weight ? Math.round(100 * Math.exp(logSum / weight)) : 0
+  if (!weight) return 0
+  return Math.round(100 * Math.min(Math.exp(logSum / weight), weakest ** 0.6))
 }
 
 function clamp(x: number, lo: number, hi: number) {
