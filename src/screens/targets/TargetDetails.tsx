@@ -127,7 +127,14 @@ export function TargetDetails(props: Props) {
                       />
                     </div>
                     <p className="factor__detail">
-                      {explainFactor(f, { night, target, a, bortle: props.bortle, filterOn: props.filterOn })}
+                      {explainFactor(f, {
+                        night,
+                        target,
+                        a,
+                        bortle: props.bortle,
+                        filterOn: props.filterOn,
+                        kit: { name: kit.name, imaging: kit.kind === 'smart-telescope' },
+                      })}
                     </p>
                   </li>
                 )

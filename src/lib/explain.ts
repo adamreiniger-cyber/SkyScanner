@@ -8,7 +8,8 @@ export const FACTOR_LABEL: Record<FactorId, string> = {
   darkness: 'Darkness',
   moon: 'Moon',
   cloud: 'Cloud',
-  sky: 'Sky brightness',
+  sky: 'Visibility',
+  time: 'Time',
 }
 
 /** The Moon's own "moon" factor rates its phase, so it gets its own label. */
@@ -37,7 +38,24 @@ export function factorRating(value: number | null): Rating | 'No data' {
   return 'Poor'
 }
 
-type Ctx = { night: NightBase; target: Target; a: Assessment; bortle: number; filterOn: boolean; timeZone?: string }
+type Ctx = {
+  night: NightBase
+  target: Target
+  a: Assessment
+  bortle: number
+  filterOn: boolean
+  /** Name and kind of the equipment in use, for the visibility and time text. */
+  kit?: { name: string; imaging: boolean }
+  timeZone?: string
+}
+
+const FAINT_KINDS = new Set(['emission-nebula', 'reflection-nebula', 'planetary-nebula', 'supernova-remnant', 'galaxy', 'globular-cluster'])
+
+function hoursText(h: number): string {
+  const r = Math.round(h * 2) / 2
+  if (r < 1) return `${Math.max(10, Math.round((h * 60) / 10) * 10)} minutes`
+  return r === 1 ? 'about an hour' : `about ${r} hours`
+}
 
 export function explainFactor(f: Factor, ctx: Ctx): string {
   const { night, target, a, timeZone } = ctx
@@ -94,7 +112,31 @@ export function explainFactor(f: Factor, ctx: Ctx): string {
       return `${Math.round(a.cloudInWindow)}% cloud on average in your window.`
     case 'sky': {
       const filter = ctx.filterOn ? ' The filter helps cut through it.' : ''
-      return `Bortle ${ctx.bortle}, ${BORTLE_LABEL[ctx.bortle] ?? ''}.${filter}`
+      const sky = `Bortle ${ctx.bortle}, ${BORTLE_LABEL[ctx.bortle] ?? ''}.`
+      if (!FAINT_KINDS.has(target.kind) || f.value == null) return `${sky}${filter}`
+      const kit = ctx.kit ? `your ${ctx.kit.name}` : 'your kit'
+      const v = f.value
+      const how =
+        v >= 0.85
+          ? `Stands out well with ${kit}.`
+          : v >= 0.6
+            ? `Shows clearly with ${kit}, a little washed out.`
+            : v >= 0.35
+              ? `Faint against this sky with ${kit}. A darker site would help a lot.`
+              : `Very hard to pick out of this sky with ${kit}.`
+      return `${sky} ${how}${filter}`
+    }
+    case 'time': {
+      if (!a.window) return 'Not well placed at all.'
+      const well = `Well placed for ${hoursText(a.usableHours)}.`
+      if ((f.value ?? 0) >= 0.99) return well
+      const imaging = ctx.kit?.imaging ?? true
+      const want = ['double-star', 'planet', 'moon', 'sun'].includes(target.kind)
+        ? 'half an hour'
+        : imaging
+          ? 'a couple of hours of imaging'
+          : 'an hour at the eyepiece'
+      return `${well} It deserves ${want}.`
     }
   }
 }

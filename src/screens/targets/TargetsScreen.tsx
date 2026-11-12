@@ -41,7 +41,16 @@ export function TargetsScreen({ onNavigate, now: nowProp }: Props) {
     () =>
       CATALOGUE.map((target) => {
         const filterOn = sky.filter !== 'none' || Boolean(kit.dualBandFilter)
-        const a = assess(night, target, { bortle: sky.bortle, narrowbandFilter: filterOn }, cloudAt)
+        const a = assess(
+          night,
+          target,
+          {
+            bortle: sky.bortle,
+            narrowbandFilter: filterOn,
+            kit: { apertureMm: kit.apertureMm, imaging: kit.kind === 'smart-telescope' },
+          },
+          cloudAt,
+        )
         return { target, a, filterOn: filterOn && NARROWBAND_KINDS.has(target.kind) }
       })
         // The Moon and Sun aren't washed out by moonlight, so the moon filter leaves them alone.

@@ -9,6 +9,8 @@ import {
   phaseFactor,
   rate,
   skyFactor,
+  hoursNeeded,
+  timeFactor,
   type SkySettings,
 } from './score'
 import { compass, computeNight, darkRange, nightStart, phaseName, separation } from './sky'
@@ -108,7 +110,7 @@ describe('assess', () => {
     expect(sun.daytime).toBe(true)
     expect(sun.window).not.toBeNull()
     expect(sun.samples[sun.window![0]].sunAlt).toBeGreaterThan(0)
-    expect(sun.factors.map((f) => f.id)).toEqual(['altitude', 'cloud'])
+    expect(sun.factors.map((f) => f.id)).toEqual(['altitude', 'cloud', 'time'])
     expect(sun.score).toBeGreaterThan(0)
   })
 
@@ -152,8 +154,28 @@ describe('factors', () => {
   })
 
   it('ranks sky brightness from dark site to city', () => {
-    expect(skyFactor({ bortle: 1, narrowbandFilter: false }, 'galaxy')).toBe(1)
-    expect(skyFactor({ bortle: 9, narrowbandFilter: false }, 'galaxy')).toBeCloseTo(0.15)
+    const m33 = findTarget('m33')!
+    const dark = skyFactor({ bortle: 2, narrowbandFilter: false }, m33)
+    const city = skyFactor({ bortle: 8, narrowbandFilter: false }, m33)
+    expect(dark).toBeGreaterThan(0.85)
+    expect(city).toBeLessThan(0.35)
+    // Bright clusters barely mind.
+    expect(skyFactor({ bortle: 8, narrowbandFilter: false }, findTarget('m45')!)).toBeGreaterThan(0.7)
+  })
+
+  it('digs deeper with more aperture, and further still by stacking', () => {
+    const m51 = findTarget('m51')!
+    const at = (apertureMm: number, imaging: boolean) => skyFactor({ bortle: 5, narrowbandFilter: false, kit: { apertureMm, imaging } }, m51)
+    expect(at(90, true)).toBeGreaterThan(at(30, true))
+    expect(at(200, false)).toBeGreaterThan(at(50, false))
+    expect(at(50, true)).toBeGreaterThan(at(50, false))
+  })
+
+  it('rewards time up to what the target needs', () => {
+    expect(timeFactor(3, 2)).toBe(1)
+    expect(timeFactor(0.5, 2)).toBeCloseTo(0.5)
+    expect(hoursNeeded('galaxy', true)).toBeGreaterThan(hoursNeeded('galaxy', false))
+    expect(hoursNeeded('planet', true)).toBe(0.5)
   })
 
   it('combines factors and skips missing ones', () => {
@@ -180,5 +202,45 @@ describe('factors', () => {
 
   it('turns scores into ratings', () => {
     expect([rate(85), rate(65), rate(45), rate(10)]).toEqual(['Great', 'Good', 'Fair', 'Poor'])
+  })
+})
+
+/**
+ * Reference cases: what an experienced observer would expect, from London.
+ * If tuning the weights breaks one of these, the tuning is wrong.
+ */
+describe('reference cases', () => {
+  const newMoon = night // 12 Nov 2026, two days after new moon
+  const fullMoon = computeNight(LONDON, new Date(Date.UTC(2026, 10, 24, 21)))
+  const S50 = { apertureMm: 50, imaging: true }
+  const MINI = { apertureMm: 30, imaging: true }
+  const BINOS = { apertureMm: 50, imaging: false }
+  const DOB = { apertureMm: 200, imaging: false }
+  type Kit = typeof S50
+  const score = (n: typeof night, id: string, bortle: number, kit: Kit, narrowbandFilter = false) =>
+    assess(n, findTarget(id)!, { bortle, narrowbandFilter, kit }).score
+
+  it.each([
+    ['Orion Nebula, suburbs, Seestar S50, no Moon', () => score(newMoon, 'm42', 5, S50), 75, 100],
+    ['Triangulum Galaxy, dark site, Seestar S50, no Moon', () => score(newMoon, 'm33', 3, S50), 80, 100],
+    ['Triangulum Galaxy, suburbs, Seestar S50', () => score(newMoon, 'm33', 5, S50), 60, 85],
+    ['Triangulum Galaxy, city, Dwarf Mini', () => score(newMoon, 'm33', 8, MINI), 0, 59],
+    ['Triangulum Galaxy, suburbs, 10×50 binoculars', () => score(newMoon, 'm33', 5, BINOS), 0, 59],
+    ['Whirlpool Galaxy, full Moon, suburbs, binoculars', () => score(fullMoon, 'm51', 5, BINOS), 0, 45],
+    ['Ring Nebula, city, Seestar S50', () => score(newMoon, 'm57', 8, S50), 60, 100],
+    ['Hercules Cluster, suburbs, 8-inch Dobsonian', () => score(newMoon, 'm13', 5, DOB), 60, 100],
+    ['North America Nebula, city, Seestar S50 with filter', () => score(newMoon, 'ngc7000', 8, S50, true), 50, 85],
+    ['North America Nebula, city, no filter', () => score(newMoon, 'ngc7000', 8, MINI), 0, 49],
+    ['Pleiades, city, binoculars', () => score(newMoon, 'm45', 8, BINOS), 70, 100],
+    ['Albireo, inner city, binoculars', () => score(newMoon, 'albireo', 9, BINOS), 75, 100],
+    ['Jupiter, full Moon, city, Dobsonian', () => score(fullMoon, 'jupiter', 8, DOB), 80, 100],
+  ])('%s', (_name, get, lo, hi) => {
+    const s = (get as () => number)()
+    expect(s).toBeGreaterThanOrEqual(lo as number)
+    expect(s).toBeLessThanOrEqual(hi as number)
+  })
+
+  it('scores a filter higher than none on an emission nebula in the city', () => {
+    expect(score(newMoon, 'ngc7000', 8, S50, true)).toBeGreaterThan(score(newMoon, 'ngc7000', 8, S50))
   })
 })
