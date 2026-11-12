@@ -3,6 +3,7 @@ export const SCREENS = [
   { id: 'targets', label: 'Targets', blurb: 'Tonight’s best targets and the details for each one.' },
   { id: 'location', label: 'Location', blurb: 'Where you’re observing from.' },
   { id: 'sky', label: 'Sky', blurb: 'Sky brightness, moonlight and date & time.' },
+  { id: 'horizon', label: 'Horizon', blurb: 'Which directions you can see from your spot.' },
   { id: 'equipment', label: 'Equipment', blurb: 'Your telescope, binoculars and filters.' },
 ] as const
 

@@ -1,0 +1,87 @@
+/* Horizon screen: compass of directions you can see. */
+.compass {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  max-width: 360px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.compass__dir,
+.compass__you {
+  aspect-ratio: 1;
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.compass__dir {
+  border: 2px solid var(--great);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.compass__dir[aria-pressed='false'] {
+  border: 2px dashed var(--line-strong);
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.compass__dir:hover {
+  border-color: var(--accent);
+}
+
+.compass__abbr {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.compass__dir[aria-pressed='false'] .compass__abbr {
+  text-decoration: line-through;
+}
+
+.compass__state {
+  font-size: var(--text-sm);
+}
+
+.compass__dir[aria-pressed='true'] .compass__state {
+  color: var(--great);
+}
+
+.compass__you {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.compass__you circle {
+  fill: var(--warm);
+}
+
+.horizon__summary {
+  text-align: center;
+  font-weight: 600;
+}
+
+.horizon__height {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.horizon__height input {
+  flex: 1 1 200px;
+  min-height: var(--tap);
+  accent-color: var(--accent);
+}
+
+.horizon__height output {
+  font-weight: 600;
+  min-width: 10ch;
+}

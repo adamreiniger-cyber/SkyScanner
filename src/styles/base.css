@@ -123,17 +123,21 @@ button {
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   background: var(--surface);
   border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 .tab {
+  min-width: 0;
+  min-height: var(--tap);
   background: none;
   border: 0;
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-3) 2px;
   color: var(--muted);
+  /* Five tabs share a phone's width, so the labels are a little smaller there. */
+  font-size: var(--text-sm);
 }
 
 .tab[aria-current='page'] {
@@ -159,6 +163,7 @@ button {
 
   .tab {
     padding: var(--space-3) var(--space-4);
+    font-size: inherit;
   }
 
   .screen {
